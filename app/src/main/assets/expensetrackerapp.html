@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel Standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slide-in-from-bottom {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-in {
+            animation: fade-in 0.5s ease-out;
+        }
+        
+        .slide-in-from-bottom-10 {
+            animation: slide-in-from-bottom 0.5s ease-out;
+        }
+        
+        /* Enhanced gradient backgrounds */
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .gradient-purple {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        /* Force white text on gradient cards in all modes - highest priority */
+        .gradient-blue,
+        .gradient-blue *,
+        .gradient-blue p,
+        .gradient-blue h1,
+        .gradient-blue h2,
+        .gradient-blue h3,
+        .gradient-blue h4,
+        .gradient-blue span,
+        .gradient-blue div,
+        .gradient-purple,
+        .gradient-purple *,
+        .gradient-purple p,
+        .gradient-purple h1,
+        .gradient-purple h2,
+        .gradient-purple h3,
+        .gradient-purple h4,
+        .gradient-purple span,
+        .gradient-purple div {
+            color: white !important;
+        }
+        
+        /* Override dark mode text colors on gradient cards - even more specific */
+        .dark .gradient-blue,
+        .dark .gradient-blue *,
+        .dark .gradient-blue p,
+        .dark .gradient-blue h1,
+        .dark .gradient-blue h2,
+        .dark .gradient-blue h3,
+        .dark .gradient-blue h4,
+        .dark .gradient-blue span,
+        .dark .gradient-blue div,
+        .dark .gradient-purple,
+        .dark .gradient-purple *,
+        .dark .gradient-purple p,
+        .dark .gradient-purple h1,
+        .dark .gradient-purple h2,
+        .dark .gradient-purple h3,
+        .dark .gradient-purple h4,
+        .dark .gradient-purple span,
+        .dark .gradient-purple div {
+            color: white !important;
+        }
+        
+        /* Override any Tailwind text color classes on gradient cards */
+        .gradient-blue.text-slate-900,
+        .gradient-blue.dark\:text-white,
+        .gradient-blue.text-black,
+        .gradient-purple.text-slate-900,
+        .gradient-purple.dark\:text-white,
+        .gradient-purple.text-black {
+            color: white !important;
+        }
+        
+        /* Ultra-specific override for Total Spent card text */
+        .gradient-blue h2,
+        .gradient-blue h2.text-white,
+        .gradient-blue h2.dark\:text-white,
+        .gradient-blue p.text-white,
+        .gradient-blue p.dark\:text-white,
+        .gradient-purple h3,
+        .gradient-purple h3.text-white,
+        .gradient-purple h3.dark\:text-white,
+        .gradient-purple p.text-white,
+        .gradient-purple p.dark\:text-white {
+            color: white !important;
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 200ms;
+        }
+        
+        /* Custom scrollbar for webkit */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.3);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.5);
+        }
+        
+        /* Glass morphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        
+        .dark .glass {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        /* Pulse animation for active states */
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+            }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        /* Shimmer effect for loading states */
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+        
+        .shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+    
+    <script>
+        // Configure Tailwind dark mode
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-blue': '#3b82f6',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        
+        // Icon component factory
+        const Icon = ({ children, size = 24, strokeWidth = 2, ...props }) => (
+            <svg 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth={strokeWidth}
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                {...props}
+            >
+                {children}
+            </svg>
+        );
+        
+        // Icon components
+        const Home = (props) => (
+            <Icon {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Icon>
+        );
+        const BarChart3 = (props) => (
+            <Icon {...props}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></Icon>
+        );
+        const Target = (props) => (
+            <Icon {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Icon>
+        );
+        const Settings = (props) => (
+            <Icon {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></Icon>
+        );
+        const Plus = (props) => (
+            <Icon {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>
+        );
+        const ChevronLeft = (props) => (
+            <Icon {...props}><polyline points="15 18 9 12 15 6"/></Icon>
+        );
+        const Calendar = (props) => (
+            <Icon {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>
+        );
+        const Tag = (props) => (
+            <Icon {...props}><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l10-10A1 1 0 0 0 22 11V2Z"/><path d="M7 7h.01"/></Icon>
+        );
+        const PieIcon = (props) => (
+            <Icon {...props}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></Icon>
+        );
+        const TrendingUp = (props) => (
+            <Icon {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Icon>
+        );
+        const ArrowRight = (props) => (
+            <Icon {...props}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></Icon>
+        );
+        const Filter = (props) => (
+            <Icon {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></Icon>
+        );
+        const Trash2 = (props) => (
+            <Icon {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></Icon>
+        );
+        const Download = (props) => (
+            <Icon {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></Icon>
+        );
+        const Moon = (props) => (
+            <Icon {...props}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></Icon>
+        );
+        const Sun = (props) => (
+            <Icon {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></Icon>
+        );
+        const LayoutGrid = (props) => (
+            <Icon {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></Icon>
+        );
+        const Edit = (props) => (
+            <Icon {...props}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></Icon>
+        );
+        const X = (props) => (
+            <Icon {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>
+        );
+
+        // --- UI Components ---
+
+        const Card = ({ children, className = "" }) => {
+            // If gradient class is present, don't apply default text colors
+            const hasGradient = className.includes('gradient-blue') || className.includes('gradient-purple');
+            const textClass = hasGradient ? '' : 'text-slate-900 dark:text-white';
+            return (
+                <div className={`bg-white dark:bg-[#151515] rounded-[2rem] p-6 border border-slate-100 dark:border-white/5 shadow-lg dark:shadow-black/50 ${textClass} ${className}`}>
+                    {children}
+                </div>
+            );
+        };
+
+        const NavButton = ({ icon: Icon, active, onClick, label }) => (
+            <button 
+                onClick={onClick}
+                className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${
+                    active ? 'text-blue-500 scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                }`}
+            >
+                {active && (
+                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
+                )}
+                <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+                <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
+            </button>
+        );
+
+        const CategoryIcon = ({ category, size = "md" }) => {
+            const categories = {
+                Food: { icon: "🍔", color: "bg-orange-500/10", text: "text-orange-500", border: "border-orange-500/20" },
+                Transport: { icon: "🚗", color: "bg-blue-500/10", text: "text-blue-500", border: "border-blue-500/20" },
+                Shopping: { icon: "🛍️", color: "bg-blue-500/10", text: "text-blue-500", border: "border-blue-500/20" },
+                Bills: { icon: "📜", color: "bg-red-500/10", text: "text-red-500", border: "border-red-500/20" },
+                Entertainment: { icon: "🍿", color: "bg-amber-500/10", text: "text-amber-500", border: "border-amber-500/20" },
+                Others: { icon: "✨", color: "bg-slate-500/10", text: "text-slate-500", border: "border-slate-500/20" },
+            };
+            
+            const config = categories[category] || { icon: "📦", color: "bg-slate-500/10", text: "text-slate-500", border: "border-slate-500/20" };
+            const sizeClasses = size === "sm" ? "w-10 h-10 text-lg" : "w-12 h-12 text-xl";
+            
+            return (
+                <div className={`${sizeClasses} ${config.color} ${config.text} ${config.border} border rounded-2xl flex items-center justify-center shadow-sm transition-transform hover:scale-110`}>
+                    {config.icon}
+                </div>
+            );
+        };
+
+        // --- Main Application ---
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('home');
+            const [darkMode, setDarkMode] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
+            const [authMode, setAuthMode] = useState('login'); // login | signup | forgot
+            const [currentUser, setCurrentUser] = useState(null);
+            const [authError, setAuthError] = useState('');
+            const [showAbout, setShowAbout] = useState(false);
+            // Start empty; data comes from SQLite per-user once logged in
+            const [expenses, setExpenses] = useState([]);
+            const [editingExpense, setEditingExpense] = useState(null);
+            const [showEditModal, setShowEditModal] = useState(false);
+
+            useEffect(() => {
+                if (darkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [darkMode]);
+
+            // Load current session (Android SharedPreferences)
+            useEffect(() => {
+                try {
+                    if (window.Android && typeof window.Android.getCurrentUser === 'function') {
+                        const raw = window.Android.getCurrentUser();
+                        const parsed = raw ? JSON.parse(raw) : null;
+                        if (parsed && parsed.id) {
+                            setCurrentUser(parsed);
+                        }
+                    }
+                } catch (err) {
+                    console.log('getCurrentUser failed', err);
+                }
+            }, []);
+
+            // Load expenses from Android SQLite (if running inside WebView)
+            const loadExpenses = () => {
+                try {
+                    if (currentUser && window.Android && typeof window.Android.getExpenses === 'function') {
+                        const raw = window.Android.getExpenses();
+                        const parsed = JSON.parse(raw || '[]');
+                        if (Array.isArray(parsed)) {
+                            setExpenses(parsed);
+                        }
+                    }
+                } catch (err) {
+                    console.log('Android DB load failed', err);
+                }
+            };
+
+            useEffect(() => {
+                loadExpenses();
+            }, [currentUser]);
+
+            const handleDeleteExpense = (expenseId) => {
+                if (!confirm('Are you sure to delete it?')) return;
+                try {
+                    if (window.Android && typeof window.Android.deleteExpense === 'function') {
+                        const deleted = window.Android.deleteExpense(expenseId);
+                        if (deleted) {
+                            loadExpenses();
+                        }
+                    }
+                } catch (err) {
+                    console.log('Delete failed', err);
+                }
+            };
+
+            const handleEditExpense = (expense) => {
+                setEditingExpense(expense);
+                setShowEditModal(true);
+            };
+
+            const handleSaveEdit = (updatedExpense) => {
+                try {
+                    if (window.Android && typeof window.Android.updateExpense === 'function') {
+                        const updated = window.Android.updateExpense(
+                            updatedExpense.id,
+                            updatedExpense.category,
+                            updatedExpense.amount,
+                            updatedExpense.note,
+                            updatedExpense.date
+                        );
+                        if (updated) {
+                            loadExpenses();
+                            setShowEditModal(false);
+                            setEditingExpense(null);
+                        }
+                    }
+                } catch (err) {
+                    console.log('Update failed', err);
+                }
+            };
+
+            const handleLogout = () => {
+                try {
+                    if (window.Android && typeof window.Android.logout === 'function') {
+                        window.Android.logout();
+                    }
+                } catch (err) {
+                    console.log('logout failed', err);
+                }
+                setExpenses([]);
+                setCurrentUser(null);
+                setAuthMode('login');
+                setActiveTab('home');
+            };
+
+            // --- Auth Screens ---
+            const AuthShell = ({ title, subtitle, children }) => (
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-black dark:via-[#0a0a0a] dark:to-black font-sans text-slate-900 flex justify-center p-0 md:p-12 transition-colors duration-500">
+                    <div className="w-full max-w-md bg-white dark:bg-black md:rounded-[3.5rem] md:shadow-2xl md:border-[10px] md:border-[#1a1a1a] overflow-hidden relative flex flex-col h-screen md:h-[844px]">
+                        <main className="flex-1 overflow-y-auto px-6 pt-14 pb-12 scrollbar-hide custom-scrollbar">
+                            <div className="space-y-8 animate-in fade-in duration-500">
+                                <div className="text-center space-y-2">
+                                    <div className="w-16 h-16 mx-auto rounded-3xl gradient-blue flex items-center justify-center shadow-xl shadow-blue-500/30">
+                                        <span className="text-2xl font-black text-white">$</span>
+                                    </div>
+                                    <h1 className="text-3xl font-black tracking-tight dark:text-white">{title}</h1>
+                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{subtitle}</p>
+                                </div>
+                                {authError && (
+                                    <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-2xl p-4 text-xs font-bold">
+                                        {authError}
+                                    </div>
+                                )}
+                                {children}
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+
+            const LoginScreen = () => {
+                const [username, setUsername] = useState('');
+                const [password, setPassword] = useState('');
+                return (
+                    <AuthShell title="Welcome Back" subtitle="Log in to continue">
+                        <div className="space-y-4">
+                            <div className="space-y-3">
+                                <input
+                                    type="text"
+                                    placeholder="Username"
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                                <button
+                                    onClick={() => {
+                                        setAuthError('');
+                                        try {
+                                            const raw = window.Android?.login?.(username, password);
+                                            const res = raw ? JSON.parse(raw) : { ok: false, error: 'Login failed.' };
+                                            if (!res.ok) return setAuthError(res.error || 'Login failed.');
+                                            setCurrentUser(res.user);
+                                        } catch (err) {
+                                            console.log(err);
+                                            setAuthError('Login failed.');
+                                        }
+                                    }}
+                                    className="w-full gradient-blue text-white font-bold py-4 rounded-[2rem] shadow-xl shadow-blue-500/30 text-base transition-all hover:scale-[1.01] active:scale-95"
+                                >
+                                    Log In
+                                </button>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <button
+                                    className="text-xs font-bold text-blue-500 dark:text-blue-400"
+                                    onClick={() => { setAuthError(''); setAuthMode('forgot'); }}
+                                >
+                                    Forgot password?
+                                </button>
+                                <button
+                                    className="text-xs font-bold text-slate-500 dark:text-slate-400"
+                                    onClick={() => { setAuthError(''); setAuthMode('signup'); }}
+                                >
+                                    Create account
+                                </button>
+                            </div>
+                        </div>
+                    </AuthShell>
+                );
+            };
+
+            const SignupScreen = () => {
+                const [username, setUsername] = useState('');
+                const [password, setPassword] = useState('');
+                const [pet, setPet] = useState('');
+                return (
+                    <AuthShell title="Create Account" subtitle="Sign up to save your data">
+                        <div className="space-y-4">
+                            <input
+                                type="text"
+                                placeholder="Username"
+                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                            />
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                            <div className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+                                    Security Question
+                                </p>
+                                <p className="text-xs font-bold dark:text-white mb-3">What is your first pet name?</p>
+                                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-3 leading-snug">
+                                    Important: You will need this answer to reset your password later using <span className="font-black">Forgot password</span>.
+                                </p>
+                                <input
+                                    type="text"
+                                    placeholder="Answer"
+                                    className="w-full bg-transparent border border-slate-200/60 dark:border-white/10 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                    value={pet}
+                                    onChange={(e) => setPet(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setAuthError('');
+                                    try {
+                                        const raw = window.Android?.signup?.(username, password, pet);
+                                        const res = raw ? JSON.parse(raw) : { ok: false, error: 'Signup failed.' };
+                                        if (!res.ok) return setAuthError(res.error || 'Signup failed.');
+                                        setCurrentUser(res.user);
+                                    } catch (err) {
+                                        console.log(err);
+                                        setAuthError('Signup failed.');
+                                    }
+                                }}
+                                className="w-full gradient-blue text-white font-bold py-4 rounded-[2rem] shadow-xl shadow-blue-500/30 text-base transition-all hover:scale-[1.01] active:scale-95"
+                            >
+                                Sign Up
+                            </button>
+                            <button
+                                className="w-full text-xs font-bold text-slate-500 dark:text-slate-400 py-2"
+                                onClick={() => { setAuthError(''); setAuthMode('login'); }}
+                            >
+                                Back to login
+                            </button>
+                        </div>
+                    </AuthShell>
+                );
+            };
+
+            const ForgotPasswordScreen = () => {
+                const [username, setUsername] = useState('');
+                const [pet, setPet] = useState('');
+                const [newPassword, setNewPassword] = useState('');
+                return (
+                    <AuthShell title="Reset Password" subtitle="Use your security answer to set a new password">
+                        <div className="space-y-4">
+                            <input
+                                type="text"
+                                placeholder="Username"
+                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                            />
+                            <div className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+                                    Security Question
+                                </p>
+                                <p className="text-xs font-bold dark:text-white mb-3">What is your first pet name?</p>
+                                <input
+                                    type="text"
+                                    placeholder="Answer"
+                                    className="w-full bg-transparent border border-slate-200/60 dark:border-white/10 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                    value={pet}
+                                    onChange={(e) => setPet(e.target.value)}
+                                />
+                            </div>
+                            <input
+                                type="password"
+                                placeholder="New password"
+                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl px-5 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                            />
+                            <button
+                                onClick={() => {
+                                    setAuthError('');
+                                    try {
+                                        const raw = window.Android?.resetPassword?.(username, pet, newPassword);
+                                        const res = raw ? JSON.parse(raw) : { ok: false, error: 'Reset failed.' };
+                                        if (!res.ok) return setAuthError(res.error || 'Reset failed.');
+                                        setAuthMode('login');
+                                        setAuthError('Password reset successful. Please log in.');
+                                    } catch (err) {
+                                        console.log(err);
+                                        setAuthError('Reset failed.');
+                                    }
+                                }}
+                                className="w-full gradient-blue text-white font-bold py-4 rounded-[2rem] shadow-xl shadow-blue-500/30 text-base transition-all hover:scale-[1.01] active:scale-95"
+                            >
+                                Reset Password
+                            </button>
+                            <button
+                                className="w-full text-xs font-bold text-slate-500 dark:text-slate-400 py-2"
+                                onClick={() => { setAuthError(''); setAuthMode('login'); }}
+                            >
+                                Back to login
+                            </button>
+                        </div>
+                    </AuthShell>
+                );
+            };
+
+            const totalMonthly = useMemo(() => expenses.reduce((acc, e) => acc + e.amount, 0), [expenses]);
+
+            // --- Screens ---
+
+            const HomeDashboard = () => (
+                <div className="space-y-6 pb-32 animate-in fade-in duration-500">
+                    <header className="flex justify-between items-center px-2">
+                        <div>
+                            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mb-1">Expenses</h1>
+                            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">October 2023</p>
+                        </div>
+                        <button className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/20 transition-all active:scale-95 shadow-sm">
+                            <Filter size={18} />
+                        </button>
+                    </header>
+
+                    {/* Main Stats */}
+                    <Card className="gradient-blue border-none text-white p-8 shadow-2xl shadow-blue-500/30 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12"></div>
+                        <div className="relative z-10">
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-90 mb-3 text-white dark:text-white" style={{color: 'white'}}>Total Spent</p>
+                            <div className="flex items-end justify-between">
+                                <h2 className="text-5xl font-black tracking-tighter text-white dark:text-white" style={{color: 'white'}}>${totalMonthly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white dark:text-white" style={{color: 'white'}}>
+                                    <TrendingUp size={14} />
+                                    <span style={{color: 'white'}}>+12% vs last mo</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Daily Summary Chart Mini */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center px-2">
+                            <h3 className="text-sm font-bold dark:text-white uppercase tracking-wider">Weekly Overview</h3>
+                            <button className="text-xs font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400">View All</button>
+                        </div>
+                        <Card className="flex items-end justify-between h-40 gap-2 py-4 px-2">
+                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
+                                const heights = [30, 60, 45, 90, 20, 50, 75];
+                                const h = heights[i];
+                                const isActive = i === 3;
+                                return (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-3 group cursor-pointer">
+                                        <div className="relative w-full flex items-end justify-center">
+                                            <div 
+                                                className={`w-full rounded-t-xl transition-all duration-500 ${
+                                                    isActive 
+                                                        ? 'bg-gradient-to-t from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30' 
+                                                        : 'bg-slate-100 dark:bg-white/5 group-hover:bg-slate-200 dark:group-hover:bg-white/10'
+                                                }`}
+                                                style={{ height: `${h}%` }}
+                                            ></div>
+                                            {isActive && (
+                                                <div className="absolute -top-6 text-[10px] font-bold text-blue-500 dark:text-blue-400">
+                                                    ${(h * 2.5).toFixed(0)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span className={`text-[11px] font-bold ${isActive ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400'}`}>
+                                            {day}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </Card>
+                    </div>
+
+                    {/* Recent List */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center px-2">
+                            <h3 className="text-sm font-bold dark:text-white uppercase tracking-wider">Recent Spending</h3>
+                            <button className="flex items-center gap-1 text-xs font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 group">
+                                <span>View All</span>
+                                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            {expenses.slice(0, 4).map((e, index) => (
+                                <div 
+                                    key={e.id} 
+                                    className="flex items-center gap-4 bg-white dark:bg-[#151515] p-5 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all"
+                                    style={{ animationDelay: `${index * 0.1}s` }}
+                                >
+                                    <CategoryIcon category={e.category} size="sm" />
+                                    <div className="flex-1 min-w-0" onClick={() => handleEditExpense(e)}>
+                                        <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{e.note}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5">{e.category} • {e.date}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-black text-lg text-slate-900 dark:text-white whitespace-nowrap">-${e.amount.toFixed(2)}</p>
+                                        <button
+                                            onClick={(ev) => { ev.stopPropagation(); handleEditExpense(e); }}
+                                            className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-all"
+                                        >
+                                            <Edit size={14} />
+                                        </button>
+                                        <button
+                                            onClick={(ev) => { ev.stopPropagation(); handleDeleteExpense(e.id); }}
+                                            className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const AddExpenseScreen = () => {
+                const [amount, setAmount] = useState('');
+                const [cat, setCat] = useState('Food');
+                const [note, setNote] = useState('');
+                const [date, setDate] = useState(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
+                
+                const handleSave = () => {
+                    if (amount && parseFloat(amount) > 0) {
+                        const newExpense = {
+                            id: Date.now(),
+                            category: cat,
+                            amount: parseFloat(amount),
+                            note: note || 'No note',
+                            date: date || 'Today'
+                        };
+                        // Persist to Android SQLite if available, otherwise just update UI state
+                        try {
+                            let insertedId = null;
+                            if (window.Android && typeof window.Android.addExpense === 'function') {
+                                insertedId = window.Android.addExpense(newExpense.category, newExpense.amount, newExpense.note, newExpense.date);
+                                if (insertedId && insertedId > 0) {
+                                    newExpense.id = insertedId;
+                                }
+                            }
+                            if (insertedId && insertedId > 0) {
+                                loadExpenses();
+                                setAmount('');
+                                setNote('');
+                                setCat('Food');
+                                setDate(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
+                                setActiveTab('home');
+                            }
+                        } catch (err) {
+                            console.log('Android DB save failed', err);
+                        }
+                    }
+                };
+                
+                return (
+                    <div className="pb-32 animate-in slide-in-from-bottom-10 duration-500">
+                        <header className="flex items-center justify-between mb-10">
+                            <button 
+                                onClick={() => setActiveTab('home')} 
+                                className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-all active:scale-95 shadow-sm"
+                            >
+                                <ChevronLeft size={24} />
+                            </button>
+                            <h2 className="text-xl font-bold dark:text-white">New Expense</h2>
+                            <div className="w-12"></div>
+                        </header>
+
+                        <div className="text-center mb-12">
+                            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-4">How much did you spend?</p>
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-4xl font-bold text-slate-300 dark:text-slate-600">$</span>
+                                <input 
+                                    autoFocus
+                                    type="number" 
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    className="text-6xl font-black bg-transparent outline-none w-64 text-center dark:text-white tracking-tighter placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                />
+                            </div>
+                            {amount && parseFloat(amount) > 0 && (
+                                <p className="mt-4 text-xs font-bold text-slate-400 dark:text-slate-500">
+                                    ${parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-8">
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 px-2">Select Category</p>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Others'].map(c => (
+                                        <button 
+                                            key={c}
+                                            onClick={() => setCat(c)}
+                                            className={`p-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 relative overflow-hidden group ${
+                                                cat === c 
+                                                    ? 'border-blue-500 bg-blue-500/10 text-blue-500 shadow-lg shadow-blue-500/20 scale-105' 
+                                                    : 'border-slate-100 dark:border-white/5 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/10 hover:scale-105 active:scale-95'
+                                            }`}
+                                        >
+                                            {cat === c && (
+                                                <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full pulse-glow"></div>
+                                            )}
+                                            <CategoryIcon category={c} size="sm" />
+                                            <span className="text-[10px] font-bold uppercase">{c}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4 bg-slate-50 dark:bg-white/5 p-5 rounded-3xl border border-slate-100 dark:border-white/5 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                    <Calendar size={20} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                                    <input 
+                                        type="text" 
+                                        className="bg-transparent outline-none flex-1 font-bold text-sm dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600" 
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4 bg-slate-50 dark:bg-white/5 p-5 rounded-3xl border border-slate-100 dark:border-white/5 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                    <Tag size={20} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                                    <input 
+                                        type="text" 
+                                        className="bg-transparent outline-none flex-1 font-bold text-sm dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600" 
+                                        placeholder="Add a note..." 
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleSave}
+                                disabled={!amount || parseFloat(amount) <= 0}
+                                className={`w-full gradient-blue text-white font-bold py-5 rounded-[2rem] shadow-xl shadow-blue-500/30 text-lg transition-all ${
+                                    amount && parseFloat(amount) > 0 
+                                        ? 'hover:scale-[1.02] active:scale-95 hover:shadow-2xl hover:shadow-blue-500/40' 
+                                        : 'opacity-50 cursor-not-allowed'
+                                }`}
+                            >
+                                Save Expense
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            const AnalyticsScreen = ({ expenses, totalMonthly }) => {
+                // Calculate category totals
+                const categoryTotals = useMemo(() => {
+                    const totals = {};
+                    expenses.forEach(exp => {
+                        totals[exp.category] = (totals[exp.category] || 0) + exp.amount;
+                    });
+                    return totals;
+                }, [expenses]);
+
+                const categories = ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Others'];
+                const maxAmount = Math.max(...Object.values(categoryTotals), 1);
+                
+                // Get top 3 categories
+                const topCategories = useMemo(() => {
+                    return Object.entries(categoryTotals)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 3)
+                        .map(([cat, amount]) => ({ category: cat, amount }));
+                }, [categoryTotals]);
+
+                // Calculate percentage for each category
+                const getPercentage = (amount) => {
+                    return totalMonthly > 0 ? (amount / totalMonthly) * 100 : 0;
+                };
+
+                return (
+                    <div className="pb-32 space-y-8 animate-in fade-in duration-500">
+                        <header className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-black dark:text-white">Analytics</h2>
+                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Spending Insights</p>
+                            </div>
+                        </header>
+
+                        {/* Total Summary */}
+                        <Card className="gradient-purple border-none text-white p-6 shadow-2xl shadow-blue-500/30">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-90 mb-2 text-white dark:text-white" style={{color: 'white'}}>Total Expenses</p>
+                                    <h3 className="text-3xl font-black text-white dark:text-white" style={{color: 'white'}}>${totalMonthly.toFixed(2)}</h3>
+                                    <p className="text-xs opacity-75 mt-1 text-white dark:text-white" style={{color: 'white'}}>{expenses.length} transactions</p>
+                                </div>
+                                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                    <PieIcon size={32} strokeWidth={2} />
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Category Breakdown Chart */}
+                        <Card>
+                            <h3 className="text-sm font-bold dark:text-white uppercase tracking-wider mb-6">Category Breakdown</h3>
+                            <div className="space-y-4">
+                                {categories.map(cat => {
+                                    const amount = categoryTotals[cat] || 0;
+                                    const percentage = getPercentage(amount);
+                                    const barWidth = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+                                    
+                                    if (amount === 0) return null;
+                                    
+                                    return (
+                                        <div key={cat} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <CategoryIcon category={cat} size="sm" />
+                                                    <span className="font-bold text-sm dark:text-white">{cat}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-black text-sm dark:text-white">${amount.toFixed(2)}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-2">
+                                                        {percentage.toFixed(1)}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-1000"
+                                                    style={{ width: `${barWidth}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+
+                        {/* Top Categories */}
+                        {topCategories.length > 0 && (
+                            <Card>
+                                <h3 className="text-sm font-bold dark:text-white uppercase tracking-wider mb-4">Top Spending Categories</h3>
+                                <div className="space-y-3">
+                                    {topCategories.map((item, index) => (
+                                        <div key={item.category} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                                <span className="text-lg font-black text-blue-500">#{index + 1}</span>
+                                            </div>
+                                            <CategoryIcon category={item.category} size="sm" />
+                                            <div className="flex-1">
+                                                <p className="font-bold text-sm dark:text-white">{item.category}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                                                    {getPercentage(item.amount).toFixed(1)}% of total
+                                                </p>
+                                            </div>
+                                            <span className="font-black text-lg text-blue-500">${item.amount.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+
+                        {/* Spending Distribution Visual */}
+                        <Card>
+                            <h3 className="text-sm font-bold dark:text-white uppercase tracking-wider mb-6">Spending Distribution</h3>
+                            <div className="flex items-center justify-center">
+                                <div className="relative w-48 h-48">
+                                    {Object.entries(categoryTotals).length > 0 ? (
+                                        <>
+                                            {Object.entries(categoryTotals).map(([cat, amount], index, arr) => {
+                                                const percentage = getPercentage(amount);
+                                                if (percentage === 0) return null;
+                                                
+                                                const colors = [
+                                                    'bg-orange-500',
+                                                    'bg-blue-500', 
+                                                    'bg-blue-600',
+                                                    'bg-red-500',
+                                                    'bg-amber-500',
+                                                    'bg-slate-500'
+                                                ];
+                                                
+                                                const startAngle = arr.slice(0, index).reduce((sum, [, amt]) => 
+                                                    sum + getPercentage(amt), 0
+                                                );
+                                                const endAngle = startAngle + percentage;
+                                                
+                                                return (
+                                                    <div
+                                                        key={cat}
+                                                        className="absolute inset-0 rounded-full"
+                                                        style={{
+                                                            background: `conic-gradient(${colors[index % colors.length]} ${startAngle * 3.6}deg ${endAngle * 3.6}deg, transparent ${endAngle * 3.6}deg)`
+                                                        }}
+                                                    ></div>
+                                                );
+                                            })}
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="w-32 h-32 rounded-full bg-white dark:bg-black"></div>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">Total</span>
+                                                    <span className="text-xl font-black dark:text-white">${totalMonthly.toFixed(0)}</span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <p className="text-sm text-slate-400 dark:text-slate-500">No data</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-6 grid grid-cols-2 gap-3">
+                                {Object.entries(categoryTotals).slice(0, 6).map(([cat, amount], index) => {
+                                    const colorClasses = ['bg-orange-500', 'bg-blue-500', 'bg-blue-600', 'bg-red-500', 'bg-amber-500', 'bg-slate-500'];
+                                    return (
+                                        <div key={cat} className="flex items-center gap-2">
+                                            <div className={`w-3 h-3 rounded-full ${colorClasses[index % colorClasses.length]}`}></div>
+                                            <span className="text-[10px] font-bold dark:text-white">{cat}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+
+                        {/* Recent Activity */}
+                        <Card>
+                            <h3 className="text-sm font-bold dark:text-white uppercase tracking-wider mb-4">Recent Activity</h3>
+                            <div className="space-y-3">
+                                {expenses.slice(0, 5).map(exp => (
+                                    <div key={exp.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
+                                        <CategoryIcon category={exp.category} size="sm" />
+                                        <div className="flex-1 min-w-0" onClick={() => handleEditExpense(exp)}>
+                                            <p className="font-bold text-xs dark:text-white truncate">{exp.note}</p>
+                                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500">{exp.category} • {exp.date}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-black text-sm text-slate-900 dark:text-white">${exp.amount.toFixed(2)}</span>
+                                            <button
+                                                onClick={(ev) => { ev.stopPropagation(); handleEditExpense(exp); }}
+                                                className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20"
+                                            >
+                                                <Edit size={12} />
+                                            </button>
+                                            <button
+                                                onClick={(ev) => { ev.stopPropagation(); handleDeleteExpense(exp.id); }}
+                                                className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            const EditExpenseModal = () => {
+                if (!editingExpense) return null;
+                const [amount, setAmount] = useState(editingExpense.amount.toString());
+                const [cat, setCat] = useState(editingExpense.category);
+                const [note, setNote] = useState(editingExpense.note);
+                const [date, setDate] = useState(editingExpense.date);
+
+                return (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowEditModal(false); setEditingExpense(null); }}>
+                        <div className="bg-white dark:bg-[#151515] rounded-3xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-black dark:text-white">Edit Expense</h3>
+                                <button onClick={() => { setShowEditModal(false); setEditingExpense(null); }} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Amount</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl font-bold text-slate-300 dark:text-slate-600">$</span>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="text-3xl font-black bg-transparent outline-none w-full text-center dark:text-white"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Category</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Others'].map(c => (
+                                            <button
+                                                key={c}
+                                                onClick={() => setCat(c)}
+                                                className={`p-3 rounded-2xl border-2 transition-all ${cat === c ? 'border-blue-500 bg-blue-500/10 text-blue-500' : 'border-slate-100 dark:border-white/5'}`}
+                                            >
+                                                <CategoryIcon category={c} size="sm" />
+                                                <span className="text-[9px] font-bold uppercase mt-1 block">{c}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Note</p>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-100 dark:border-white/5 outline-none dark:text-white"
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Date</p>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-100 dark:border-white/5 outline-none dark:text-white"
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (amount && parseFloat(amount) > 0) {
+                                            handleSaveEdit({
+                                                ...editingExpense,
+                                                category: cat,
+                                                amount: parseFloat(amount),
+                                                note: note || 'No note',
+                                                date: date || 'Today'
+                                            });
+                                        }
+                                    }}
+                                    className="w-full gradient-blue text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-500/30 text-lg transition-all hover:scale-[1.02] active:scale-95"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const BudgetScreen = () => {
+                const [budgets, setBudgets] = useState([]);
+                const [showSetBudget, setShowSetBudget] = useState(false);
+                const [selectedCategory, setSelectedCategory] = useState('Food');
+                const [budgetLimit, setBudgetLimit] = useState('');
+
+                const loadBudgets = () => {
+                    try {
+                        if (window.Android && typeof window.Android.getBudgets === 'function') {
+                            const raw = window.Android.getBudgets();
+                            const parsed = JSON.parse(raw || '[]');
+                            if (Array.isArray(parsed)) {
+                                setBudgets(parsed);
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Load budgets failed', err);
+                    }
+                };
+
+                useEffect(() => {
+                    loadBudgets();
+                }, []);
+
+                // Calculate spent per category
+                const categoryTotals = useMemo(() => {
+                    const totals = {};
+                    expenses.forEach(exp => {
+                        totals[exp.category] = (totals[exp.category] || 0) + exp.amount;
+                    });
+                    return totals;
+                }, [expenses]);
+
+                const handleSetBudget = () => {
+                    if (!budgetLimit || parseFloat(budgetLimit) <= 0) return;
+                    try {
+                        if (window.Android && typeof window.Android.setBudget === 'function') {
+                            const set = window.Android.setBudget(selectedCategory, parseFloat(budgetLimit));
+                            if (set) {
+                                loadBudgets();
+                                setShowSetBudget(false);
+                                setBudgetLimit('');
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Set budget failed', err);
+                    }
+                };
+
+                const handleDeleteBudget = (category) => {
+                    if (!confirm(`Delete budget for ${category}?`)) return;
+                    try {
+                        if (window.Android && typeof window.Android.deleteBudget === 'function') {
+                            const deleted = window.Android.deleteBudget(category);
+                            if (deleted) {
+                                loadBudgets();
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Delete budget failed', err);
+                    }
+                };
+
+                const allCategories = ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Others'];
+                const budgetsMap = {};
+                budgets.forEach(b => { budgetsMap[b.category] = b; });
+
+                return (
+                    <div className="pb-32 space-y-8 animate-in fade-in duration-500">
+                        <header className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-black dark:text-white">Budget Limits</h2>
+                                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Manage your spending</p>
+                            </div>
+                        </header>
+
+                        {budgets.length === 0 && (
+                            <Card className="text-center py-8">
+                                <p className="text-sm text-slate-400 dark:text-slate-500 mb-4">No budgets set yet</p>
+                                <button
+                                    onClick={() => setShowSetBudget(true)}
+                                    className="gradient-blue text-white font-bold px-6 py-3 rounded-xl"
+                                >
+                                    Set Your First Budget
+                                </button>
+                            </Card>
+                        )}
+
+                        <div className="space-y-4">
+                            {budgets.map((budget) => {
+                                const spent = categoryTotals[budget.category] || 0;
+                                const limit = budget.limit;
+                                const percentage = limit > 0 ? (spent / limit) * 100 : 0;
+                                const isWarning = percentage >= 80;
+                                const isOver = percentage >= 100;
+                                
+                                return (
+                                    <Card key={budget.category} className="space-y-4 hover:shadow-lg transition-all">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3">
+                                                <CategoryIcon category={budget.category} size="sm" />
+                                                <span className="font-bold dark:text-white">{budget.category}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                                                    ${spent.toFixed(2)} / ${limit.toFixed(2)}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleDeleteBudget(budget.category)}
+                                                    className="w-6 h-6 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="w-full h-3 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-1000 ${
+                                                    isOver
+                                                        ? 'bg-gradient-to-r from-red-500 to-rose-500'
+                                                        : isWarning 
+                                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500' 
+                                                        : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                                }`}
+                                                style={{ width: `${Math.min(percentage, 100)}%` }}
+                                            ></div>
+                                            {(isWarning || isOver) && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className="text-[8px] font-black text-white drop-shadow-sm">
+                                                        {percentage.toFixed(0)}%
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {(isWarning || isOver) && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xl">{isOver ? '🚨' : '⚠️'}</span>
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest ${isOver ? 'text-red-500' : 'text-amber-500'}`}>
+                                                    {isOver ? 'Budget exceeded!' : `${percentage.toFixed(0)}% of limit reached`}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                        
+                        <Card 
+                            className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-500/10 dark:to-blue-600/10 border-blue-200 dark:border-blue-500/20 cursor-pointer hover:shadow-lg transition-all"
+                            onClick={() => setShowSetBudget(true)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center">
+                                    <Target size={24} className="text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-bold text-slate-900 dark:text-white">Set New Budget</p>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Create custom budget limits</p>
+                                </div>
+                                <ArrowRight size={20} className="text-blue-500" />
+                            </div>
+                        </Card>
+
+                        {showSetBudget && (
+                            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowSetBudget(false); setBudgetLimit(''); }}>
+                                <div className="bg-white dark:bg-[#151515] rounded-3xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-black dark:text-white">Set Budget</h3>
+                                        <button onClick={() => { setShowSetBudget(false); setBudgetLimit(''); }} className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Category</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {allCategories.map(c => (
+                                                    <button
+                                                        key={c}
+                                                        onClick={() => setSelectedCategory(c)}
+                                                        className={`p-3 rounded-2xl border-2 transition-all ${selectedCategory === c ? 'border-blue-500 bg-blue-500/10 text-blue-500' : 'border-slate-100 dark:border-white/5'}`}
+                                                    >
+                                                        <CategoryIcon category={c} size="sm" />
+                                                        <span className="text-[9px] font-bold uppercase mt-1 block">{c}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Budget Limit ($)</p>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="500.00"
+                                                className="w-full bg-slate-50 dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/5 outline-none dark:text-white text-2xl font-black text-center"
+                                                value={budgetLimit}
+                                                onChange={(e) => setBudgetLimit(e.target.value)}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleSetBudget}
+                                            disabled={!budgetLimit || parseFloat(budgetLimit) <= 0}
+                                            className={`w-full gradient-blue text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-500/30 text-lg transition-all ${budgetLimit && parseFloat(budgetLimit) > 0 ? 'hover:scale-[1.02] active:scale-95' : 'opacity-50 cursor-not-allowed'}`}
+                                        >
+                                            Set Budget
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const SettingsScreen = () => (
+                <div className="pb-32 space-y-8 animate-in fade-in duration-500">
+                    <header className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-3xl font-black dark:text-white">Settings</h2>
+                            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Preferences & Data</p>
+                        </div>
+                    </header>
+                    <Card className="divide-y divide-slate-100 dark:divide-white/5 p-2">
+                        <div className="flex items-center justify-between p-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 flex items-center justify-center font-black">
+                                    {currentUser?.username?.slice(0,1)?.toUpperCase() || 'U'}
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold dark:text-white">Signed in</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">@{currentUser?.username}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="text-xs font-black text-rose-500 bg-rose-500/10 px-4 py-2 rounded-xl hover:bg-rose-500/15 active:scale-[0.98]"
+                            >
+                                Log out
+                            </button>
+                        </div>
+
+                        <button 
+                            className="flex items-center justify-between p-4 w-full hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all active:scale-[0.98]"
+                            onClick={() => setDarkMode(!darkMode)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center">
+                                    {darkMode ? <Moon size={22} /> : <Sun size={22} />}
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold dark:text-white">Dark Appearance</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                                        {darkMode ? 'Currently enabled' : 'Currently disabled'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className={`w-14 h-7 rounded-full p-1 transition-all ${darkMode ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                                <div className={`w-5 h-5 rounded-full bg-white transition-all shadow-lg ${darkMode ? 'translate-x-7' : 'translate-x-0'}`}></div>
+                            </div>
+                        </button>
+                        
+                        <button
+                            className="flex items-center justify-between p-4 w-full hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all active:scale-[0.98]"
+                            onClick={() => {
+                                try {
+                                    if (window.Android && typeof window.Android.exportCsv === 'function') {
+                                        const ok = window.Android.exportCsv();
+                                        if (!ok) alert('Export failed. Are you logged in?');
+                                    } else {
+                                        alert('Export is only available in the Android app.');
+                                    }
+                                } catch (err) {
+                                    console.log('exportCsv failed', err);
+                                    alert('Export failed.');
+                                }
+                            }}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                    <Download size={22} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold dark:text-white">Export CSV</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Download your expense data</p>
+                                </div>
+                            </div>
+                            <ArrowRight size={18} className="text-slate-400" />
+                        </button>
+                        
+                        <button
+                            className="flex items-center justify-between p-4 w-full hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all active:scale-[0.98]"
+                            onClick={() => setShowAbout(true)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                    <LayoutGrid size={22} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold dark:text-white">About</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">App version & info</p>
+                                </div>
+                            </div>
+                            <ArrowRight size={18} className="text-slate-400" />
+                        </button>
+                        
+                        <button
+                            className="flex items-center justify-between p-4 w-full hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all active:scale-[0.98]"
+                            onClick={() => {
+                                const ok = confirm('Clear all expenses? This cannot be undone.');
+                                if (!ok) return;
+                                try {
+                                    if (window.Android && typeof window.Android.clearExpenses === 'function') {
+                                        const cleared = window.Android.clearExpenses();
+                                        if (cleared) {
+                                            loadExpenses();
+                                            setActiveTab('home');
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.log('Android DB clear failed', err);
+                                }
+                            }}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                                    <Trash2 size={22} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-rose-500">Clear Data</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Delete all expenses</p>
+                                </div>
+                            </div>
+                            <ArrowRight size={18} className="text-rose-400" />
+                        </button>
+                    </Card>
+                    
+                    <div className="text-center pt-8">
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Expense Tracker v1.0
+                        </p>
+                    </div>
+                </div>
+            );
+
+            if (!currentUser) {
+                if (authMode === 'signup') return <SignupScreen />;
+                if (authMode === 'forgot') return <ForgotPasswordScreen />;
+                return <LoginScreen />;
+            }
+
+            return (
+                <div className={`${darkMode ? 'dark' : ''}`}>
+                    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-black dark:via-[#0a0a0a] dark:to-black font-sans text-slate-900 flex justify-center p-0 md:p-12 transition-colors duration-500">
+                        <div className="w-full max-w-md bg-white dark:bg-black md:rounded-[3.5rem] md:shadow-2xl md:border-[10px] md:border-[#1a1a1a] overflow-hidden relative flex flex-col h-screen md:h-[844px]">
+                            
+                            {/* About Modal */}
+                            {showAbout && (
+                                <div className="absolute inset-0 z-[100] flex items-center justify-center px-6">
+                                    <div className="absolute inset-0 bg-black/40" onClick={() => setShowAbout(false)}></div>
+                                    <div className="relative w-full bg-white dark:bg-[#0a0a0a] rounded-3xl p-6 border border-slate-100 dark:border-white/10 shadow-2xl">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">About</p>
+                                                <h3 className="text-2xl font-black dark:text-white mt-1">Expense Tracker</h3>
+                                            </div>
+                                            <button
+                                                className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 font-black"
+                                                onClick={() => setShowAbout(false)}
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                        <div className="mt-4 space-y-3">
+                                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                                Version: <span className="font-black">v1.0</span>
+                                            </p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                                Track your spending by category, review analytics, and export your data as CSV.
+                                            </p>
+                                            <div className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl p-4">
+                                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+                                                    Security
+                                                </p>
+                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-relaxed">
+                                                    Passwords and security answers are stored as hashed values on-device.
+                                                </p>
+                                            </div>
+                                            <button
+                                                className="w-full gradient-blue text-white font-bold py-4 rounded-[2rem] shadow-xl shadow-blue-500/30 text-base transition-all hover:scale-[1.01] active:scale-95"
+                                                onClick={() => {
+                                                    try {
+                                                        const raw = window.Android?.getAppInfo?.();
+                                                        const info = raw ? JSON.parse(raw) : null;
+                                                        if (info) alert(`${info.name} v${info.versionName}\n\n${info.security}`);
+                                                    } catch (_) {}
+                                                }}
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <main className="flex-1 overflow-y-auto px-6 pt-12 scrollbar-hide custom-scrollbar">
+                                {activeTab === 'home' && <HomeDashboard />}
+                                {activeTab === 'add' && <AddExpenseScreen />}
+                                {activeTab === 'analytics' && <AnalyticsScreen expenses={expenses} totalMonthly={totalMonthly} />}
+                                {activeTab === 'budget' && <BudgetScreen />}
+                                {activeTab === 'settings' && <SettingsScreen />}
+                            </main>
+
+                            {showEditModal && <EditExpenseModal />}
+
+                            {/* Nav */}
+                            <nav className="glass border-t border-slate-100 dark:border-white/5 px-6 py-6 flex justify-between items-center absolute bottom-0 left-0 right-0 z-50 backdrop-blur-2xl">
+                                <NavButton icon={Home} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+                                <NavButton icon={BarChart3} label="Charts" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
+                                
+                                <button 
+                                    onClick={() => setActiveTab('add')}
+                                    className="w-16 h-16 gradient-blue text-white rounded-[1.8rem] flex items-center justify-center shadow-xl shadow-blue-500/40 hover:shadow-2xl hover:shadow-blue-500/50 active:scale-90 transition-all -mt-12 border-4 border-white dark:border-black hover:scale-110 z-10 relative pulse-glow"
+                                >
+                                    <Plus size={28} strokeWidth={3} />
+                                </button>
+
+                                <NavButton icon={Target} label="Budget" active={activeTab === 'budget'} onClick={() => setActiveTab('budget')} />
+                                <NavButton icon={Settings} label="Prefs" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
