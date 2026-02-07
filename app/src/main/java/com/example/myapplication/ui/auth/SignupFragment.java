@@ -1,4 +1,10 @@
-package com.example.myapplication;
+    package com.example.myapplication.ui.auth;
+
+import com.example.myapplication.R;
+import com.example.myapplication.data.repositories.AuthRepository;
+import com.example.myapplication.models.SignupResult;
+import com.example.myapplication.ui.main.HomeFragment;
+import com.example.myapplication.ui.main.MainActivity;
 
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -13,21 +19,11 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
-/**
- * SignupFragment - Handles new user registration.
- * 
- * Features:
- * - Username, password, and security question input
- * - Input validation
- * - Account creation
- * - Navigation back to login screen
- * - Error message display
- */
 public class SignupFragment extends Fragment {
     private TextInputEditText etUsername, etPassword, etPet;
     private MaterialButton btnSignup, btnBackToLogin;
     private TextView tvError;
-    private DataManager dataManager;
+    private AuthRepository authRepository;
 
     @Nullable
     @Override
@@ -39,10 +35,8 @@ public class SignupFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Initialize DataManager
-        dataManager = DataManager.getInstance(requireContext());
+        authRepository = new AuthRepository(requireContext());
 
-        // Initialize UI components
         etUsername = view.findViewById(R.id.etUsername);
         etPassword = view.findViewById(R.id.etPassword);
         etPet = view.findViewById(R.id.etPet);
@@ -50,10 +44,8 @@ public class SignupFragment extends Fragment {
         btnBackToLogin = view.findViewById(R.id.btnBackToLogin);
         tvError = view.findViewById(R.id.tvError);
 
-        // Setup signup button click listener
         btnSignup.setOnClickListener(v -> attemptSignup());
 
-        // Setup back to login button - navigate back to login screen
         btnBackToLogin.setOnClickListener(v -> {
             if (getActivity() != null) {
                 getActivity().getSupportFragmentManager().beginTransaction()
@@ -64,20 +56,16 @@ public class SignupFragment extends Fragment {
         });
     }
 
-    /**
-     * Attempts to create a new user account.
-     * Validates inputs and calls DataManager signup method.
-     */
     private void attemptSignup() {
-        // Hide previous error messages
+        
         tvError.setVisibility(View.GONE);
 
-        // Get input values
         String username = etUsername.getText() != null ? etUsername.getText().toString().trim() : "";
         String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
         String pet = etPet.getText() != null ? etPet.getText().toString().trim() : "";
+        
+        android.util.Log.d("SignupDebug", "Attempting signup. Username len: " + username.length() + ", Password len: " + password.length());
 
-        // Validate inputs
         if (TextUtils.isEmpty(username)) {
             tvError.setText("Please enter a username");
             tvError.setVisibility(View.VISIBLE);
@@ -86,41 +74,34 @@ public class SignupFragment extends Fragment {
         }
 
         if (TextUtils.isEmpty(password) || password.length() < 3) {
-            tvError.setText("Password must be at least 3 characters");
+            tvError.setText("Password must be at least 3 characters (Current: " + password.length() + ")");
             tvError.setVisibility(View.VISIBLE);
             etPassword.requestFocus();
             return;
         }
 
         if (TextUtils.isEmpty(pet)) {
-            tvError.setText("Please enter a security question answer");
+            tvError.setText("Please answer the security question");
             tvError.setVisibility(View.VISIBLE);
             etPet.requestFocus();
             return;
         }
 
-        // Attempt signup using DataManager
-        DataManager.SignupResult result = dataManager.signup(username, password, pet);
+        SignupResult result = authRepository.signup(username, password, pet);
 
         if (result.success) {
-            // Signup successful - show success message and navigate to main app
-            Toast.makeText(requireContext(), "Account created successfully! Welcome, " + result.user.username + "!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Signup successful!", Toast.LENGTH_SHORT).show();
             
-            // Navigate to HomeFragment
-            if (getActivity() instanceof MainActivity) {
-                MainActivity mainActivity = (MainActivity) getActivity();
-                mainActivity.getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragmentContainer, new HomeFragment())
-                    .commit();
-                // Show bottom navigation
-                mainActivity.bottomNavigation.setVisibility(View.VISIBLE);
-                mainActivity.bottomNavigation.setSelectedItemId(R.id.nav_home);
+            if (getActivity() instanceof com.example.myapplication.ui.main.MainActivity) {
+                ((com.example.myapplication.ui.main.MainActivity) getActivity()).navigateToHome();
             }
         } else {
-            // Signup failed - show error message
-            tvError.setText(result.error != null ? result.error : "Signup failed. Please try again.");
+            if (result.error != null) {
+                tvError.setText(result.error);
+            } else {
+                tvError.setText("Signup failed. Please try again.");
+            }
             tvError.setVisibility(View.VISIBLE);
-            etPassword.setText(""); // Clear password field
         }
     }
 }

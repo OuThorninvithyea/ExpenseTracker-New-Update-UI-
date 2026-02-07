@@ -88,8 +88,19 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:padding="16dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="8dp"
             style="@style/Widget.Material3.Button" />
+
+        <!-- Guest Mode Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGuest"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Continue as Guest"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            style="@style/Widget.Material3.Button.OutlinedButton" />
 
         <!-- Sign Up Link -->
         <com.google.android.material.button.MaterialButton

@@ -4,9 +4,7 @@ plugins {
 
 android {
     namespace = "com.example.myapplication"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.myapplication"
@@ -47,9 +45,6 @@ dependencies {
     
     // CardView
     implementation("androidx.cardview:cardview:1.0.0")
-    
-    // JSON parsing
-    implementation("org.json:json:20231013")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

@@ -1,4 +1,4 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.main;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -12,10 +12,6 @@ import androidx.core.content.ContextCompat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Simple 7-day bar chart for weekly spending overview.
- * Data is provided by AnalyticsFragment.
- */
 public class WeeklyOverviewChartView extends View {
     private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -41,37 +37,42 @@ public class WeeklyOverviewChartView extends View {
     }
 
     private void init() {
+        
         barPaint.setStyle(Paint.Style.FILL);
 
         gridPaint.setStyle(Paint.Style.STROKE);
         gridPaint.setStrokeWidth(dp(1));
-        gridPaint.setAlpha(60);
+        gridPaint.setAlpha(60); 
 
         labelPaint.setTextSize(sp(11));
         labelPaint.setTextAlign(Paint.Align.CENTER);
 
         valuePaint.setTextSize(sp(10));
         valuePaint.setTextAlign(Paint.Align.CENTER);
-        valuePaint.setAlpha(180);
+        valuePaint.setAlpha(180); 
 
         applyThemeColors();
     }
 
     private void applyThemeColors() {
+        
         int primary = getMaterialColor("colorPrimary");
         int onSurfaceVariant = getMaterialColor("colorOnSurfaceVariant");
         int outline = getMaterialColor("colorOutlineVariant");
 
-        barPaint.setColor(primary);
-        labelPaint.setColor(onSurfaceVariant);
-        valuePaint.setColor(onSurfaceVariant);
-        gridPaint.setColor(outline != 0 ? outline : onSurfaceVariant);
+        barPaint.setColor(primary); 
+        labelPaint.setColor(onSurfaceVariant); 
+        valuePaint.setColor(onSurfaceVariant); 
+        gridPaint.setColor(outline != 0 ? outline : onSurfaceVariant); 
     }
 
     public void setData(List<String> labels, List<Double> values) {
+        
         this.labels = labels != null ? labels : new ArrayList<>();
         this.values = values != null ? values : new ArrayList<>();
+        
         applyThemeColors();
+        
         invalidate();
     }
 
@@ -80,7 +81,7 @@ public class WeeklyOverviewChartView extends View {
         super.onDraw(canvas);
 
         if (labels == null || values == null || labels.isEmpty() || values.isEmpty()) {
-            // Nothing to draw
+            
             return;
         }
 
@@ -93,29 +94,31 @@ public class WeeklyOverviewChartView extends View {
         float paddingLeft = dp(8);
         float paddingRight = dp(8);
         float paddingTop = dp(10);
-        float paddingBottom = dp(26); // for x-axis labels
+        float paddingBottom = dp(26); 
 
         float chartLeft = paddingLeft;
-        float chartRight = w - paddingRight;
+        float chartRight = Math.max(chartLeft + 1, w - paddingRight);
         float chartTop = paddingTop;
-        float chartBottom = h - paddingBottom;
+        float chartBottom = Math.max(chartTop + 1, h - paddingBottom);
 
-        // Find max value
-        double max = 0;
+        float max = 0;
         for (int i = 0; i < count; i++) {
-            max = Math.max(max, values.get(i) != null ? values.get(i) : 0);
+            max = Math.max(max, values.get(i) != null ? values.get(i).floatValue() : 0f);
         }
-        if (max <= 0) max = 1;
+        if (max <= 0) max = 1f; 
 
-        // Grid line
         canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, gridPaint);
 
-        float slot = (chartRight - chartLeft) / count;
-        float barWidth = slot * 0.55f;
-        float radius = dp(8);
+        float availableWidth = chartRight - chartLeft;
+        if (availableWidth <= 0) return;
+        
+        float slot = availableWidth / count; 
+        float barWidth = slot * 0.55f; 
+        float radius = dp(8); 
 
         for (int i = 0; i < count; i++) {
             double v = values.get(i) != null ? values.get(i) : 0;
+            
             float ratio = (float) (v / max);
             float barHeight = (chartBottom - chartTop) * ratio;
 
@@ -127,13 +130,11 @@ public class WeeklyOverviewChartView extends View {
             RectF rect = new RectF(left, top, right, chartBottom);
             canvas.drawRoundRect(rect, radius, radius, barPaint);
 
-            // Value label (only if there is room)
             String valueText = v >= 1 ? String.format("$%.0f", v) : (v > 0 ? String.format("$%.2f", v) : "");
             if (!valueText.isEmpty()) {
                 canvas.drawText(valueText, cx, top - dp(4), valuePaint);
             }
 
-            // X label
             canvas.drawText(labels.get(i), cx, h - dp(8), labelPaint);
         }
     }
@@ -151,21 +152,26 @@ public class WeeklyOverviewChartView extends View {
         if (attrId == 0) {
             attrId = getContext().getResources().getIdentifier(attrName, "attr", "com.google.android.material");
         }
+        if (attrId == 0) {
+            
+            attrId = getContext().getResources().getIdentifier(attrName, "attr", "android");
+        }
         if (attrId == 0) return 0;
 
         TypedValue typedValue = new TypedValue();
-        if (getContext().getTheme().resolveAttribute(attrId, typedValue, true)) {
-            if (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT && typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT) {
-                return typedValue.data;
+        try {
+            if (getContext().getTheme().resolveAttribute(attrId, typedValue, true)) {
+                if (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT && typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                    return typedValue.data;
+                }
+                if (typedValue.resourceId != 0) {
+                     return ContextCompat.getColor(getContext(), typedValue.resourceId);
+                }
             }
-            if (typedValue.resourceId != 0) {
-                try {
-                    return ContextCompat.getColor(getContext(), typedValue.resourceId);
-                } catch (Exception ignored) {}
-            }
+        } catch (Exception e) {
+            
         }
         return 0;
     }
 }
-
 

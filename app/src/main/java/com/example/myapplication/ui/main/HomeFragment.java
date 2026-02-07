@@ -1,4 +1,10 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.main;
+
+import com.example.myapplication.R;
+import com.example.myapplication.adapters.ExpenseAdapter;
+import com.example.myapplication.services.ExpenseService;
+import com.example.myapplication.models.BudgetCheckResult;
+import com.example.myapplication.models.Expense;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -33,156 +39,174 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * HomeFragment - Displays the main expense list screen.
- * 
- * Features:
- * - Shows all expenses in a RecyclerView
- * - Search functionality to filter expenses
- * - Sort options (by date, amount, category)
- * - Edit and delete expense options
- * - Floating action button to add new expenses
- * - Displays total amount of all expenses
- * - Budget checking before expense updates
- */
 public class HomeFragment extends Fragment {
-    // UI Components
-    private RecyclerView rvExpenses;              // RecyclerView displaying expense list
-    private TextView tvTotalAmount;               // TextView showing total of all expenses
-    private ExpenseAdapter adapter;                // Adapter for RecyclerView
-    private DataManager dataManager;              // DataManager singleton for data operations
-    private TextInputEditText etSearch;           // Search input field
-    private MaterialButton btnSort;                // Button to open sort menu
-    private FloatingActionButton fabAddExpense;  // FAB to add new expense
     
-    // Data and state
-    private List<DataManager.Expense> allExpenses; // All expenses from database
-    private String currentSortType = "date_desc";  // Current sort type (default: newest first)
-    private String searchQuery = "";               // Current search query
+    private RecyclerView rvExpenses;              
+    private TextView tvTotalAmount;               
+    private ExpenseAdapter adapter;                
+    private ExpenseService expenseService;              
+    private TextInputEditText etSearch;           
+    private MaterialButton btnSort;                
+    private FloatingActionButton fabAddExpense;  
 
-    /**
-     * Creates and returns the view hierarchy for this fragment.
-     */
+    private List<Expense> allExpenses; 
+    private String currentSortType = "date_desc";  
+    private String searchQuery = "";               
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_home, container, false);
     }
 
-    /**
-     * Called immediately after onCreateView().
-     * Initializes UI components, sets up listeners, and loads expense data.
-     */
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Initialize DataManager singleton
-        dataManager = DataManager.getInstance(requireContext());
-        
-        // Initialize UI components
-        rvExpenses = view.findViewById(R.id.rvExpenses);
-        tvTotalAmount = view.findViewById(R.id.tvTotalAmount);
-        etSearch = view.findViewById(R.id.etSearch);
-        btnSort = view.findViewById(R.id.btnSort);
-        fabAddExpense = view.findViewById(R.id.fabAddExpense);
+        try {
+            
+            expenseService = new ExpenseService(requireContext());
 
-        // Setup search functionality - filters expenses as user types
-        etSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            rvExpenses = view.findViewById(R.id.rvExpenses);
+            tvTotalAmount = view.findViewById(R.id.tvTotalAmount);
+            etSearch = view.findViewById(R.id.etSearch);
+            btnSort = view.findViewById(R.id.btnSort);
+            fabAddExpense = view.findViewById(R.id.fabAddExpense);
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                searchQuery = s.toString().toLowerCase().trim();
-                loadExpenses();
+            if (rvExpenses == null || tvTotalAmount == null || etSearch == null || btnSort == null || fabAddExpense == null) {
+                android.util.Log.e("HomeFragment", "One or more views not found in layout");
+                Toast.makeText(requireContext(), "Error: View initialization failed", Toast.LENGTH_LONG).show();
+                return;
             }
 
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
+            etSearch.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
-        // Setup sort button - opens popup menu with sort options
-        btnSort.setOnClickListener(v -> showSortMenu());
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    try {
+                        searchQuery = s.toString().toLowerCase().trim();
+                        loadExpenses();
+                    } catch (Exception e) {
+                        android.util.Log.e("HomeFragment", "Error in search text change", e);
+                    }
+                }
 
-        // Floating action button - navigates to AddExpenseFragment
-        fabAddExpense.setOnClickListener(v -> {
-            if (getActivity() != null) {
-                getActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragmentContainer, new AddExpenseFragment())
-                    .addToBackStack(null)
-                    .commit();
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+
+            btnSort.setOnClickListener(v -> {
+                try {
+                    showSortMenu();
+                } catch (Exception e) {
+                    android.util.Log.e("HomeFragment", "Error showing sort menu", e);
+                    Toast.makeText(requireContext(), "Error showing options", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            fabAddExpense.setOnClickListener(v -> {
+                try {
+                    if (getActivity() != null) {
+                        getActivity().getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.fragmentContainer, new AddExpenseFragment())
+                            .addToBackStack(null)
+                            .commit();
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("HomeFragment", "Error navigating to add expense", e);
+                    Toast.makeText(requireContext(), "Error opening add screen", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            adapter = new ExpenseAdapter(new ArrayList<>(), new ExpenseAdapter.OnExpenseClickListener() {
+                @Override
+                public void onEditClick(Expense expense) {
+                    try {
+                        showEditDialog(expense);
+                    } catch (Exception e) {
+                        android.util.Log.e("HomeFragment", "Error showing edit dialog", e);
+                        Toast.makeText(requireContext(), "Error opening edit dialog", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onDeleteClick(Expense expense) {
+                    try {
+                        new AlertDialog.Builder(requireContext())
+                            .setTitle("Delete Expense")
+                            .setMessage("Are you sure to delete it?")
+                            .setPositiveButton("Delete", (dialog, which) -> {
+                                try {
+                                    if (expenseService.deleteExpense(expense.id)) {
+                                        loadExpenses();
+                                        Toast.makeText(requireContext(), "Expense deleted", Toast.LENGTH_SHORT).show();
+                                    }
+                                } catch (Exception e) {
+                                    android.util.Log.e("HomeFragment", "Error deleting expense", e);
+                                    Toast.makeText(requireContext(), "Error deleting expense", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                    } catch (Exception e) {
+                        android.util.Log.e("HomeFragment", "Error showing delete dialog", e);
+                    }
+                }
+            });
+
+            rvExpenses.setLayoutManager(new LinearLayoutManager(requireContext()));
+            rvExpenses.setAdapter(adapter);
+
+            loadExpenses();
+        } catch (Exception e) {
+            android.util.Log.e("HomeFragment", "Error in onViewCreated", e);
+            
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Error initializing home screen: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
-        });
-
-        adapter = new ExpenseAdapter(new ArrayList<>(), new ExpenseAdapter.OnExpenseClickListener() {
-            @Override
-            public void onEditClick(DataManager.Expense expense) {
-                showEditDialog(expense);
-            }
-
-            @Override
-            public void onDeleteClick(DataManager.Expense expense) {
-                new AlertDialog.Builder(requireContext())
-                    .setTitle("Delete Expense")
-                    .setMessage("Are you sure to delete it?")
-                    .setPositiveButton("Delete", (dialog, which) -> {
-                        if (dataManager.deleteExpense(expense.id)) {
-                            loadExpenses();
-                            Toast.makeText(requireContext(), "Expense deleted", Toast.LENGTH_SHORT).show();
-                        }
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
-            }
-        });
-
-        rvExpenses.setLayoutManager(new LinearLayoutManager(requireContext()));
-        rvExpenses.setAdapter(adapter);
-
-        // Load and display expenses
-        loadExpenses();
-    }
-
-    /**
-     * Loads expenses from database, applies filters and sorting, then updates UI.
-     * Calculates and displays total amount of filtered expenses.
-     */
-    private void loadExpenses() {
-        allExpenses = dataManager.getExpenses();
-        
-        // Filter expenses based on search query
-        List<DataManager.Expense> filteredExpenses = filterExpenses(allExpenses);
-        
-        // Sort expenses
-        List<DataManager.Expense> sortedExpenses = sortExpenses(filteredExpenses);
-        
-        adapter.updateExpenses(sortedExpenses);
-
-        // Calculate total from filtered expenses
-        double total = 0;
-        for (DataManager.Expense expense : sortedExpenses) {
-            total += expense.amount;
         }
-        // Display total amount formatted as currency
-        tvTotalAmount.setText(String.format(Locale.getDefault(), "$%.2f", total));
     }
 
-    /**
-     * Filters expenses based on the current search query.
-     * Searches in note, category, amount, and date fields.
-     * 
-     * @param expenses List of expenses to filter
-     * @return Filtered list of expenses matching search query
-     */
-    private List<DataManager.Expense> filterExpenses(List<DataManager.Expense> expenses) {
+    private void loadExpenses() {
+        try {
+            if (expenseService == null) return;
+            
+            allExpenses = expenseService.getExpenses();
+
+            List<Expense> filteredExpenses = filterExpenses(allExpenses);
+
+            List<Expense> sortedExpenses = sortExpenses(filteredExpenses);
+            
+            if (adapter != null) {
+                adapter.updateExpenses(sortedExpenses);
+            }
+
+            double total = 0;
+            for (Expense expense : sortedExpenses) {
+                total += expense.amount;
+            }
+            
+            if (tvTotalAmount != null) {
+                tvTotalAmount.setText(String.format(Locale.getDefault(), "$%.2f", total));
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HomeFragment", "Error loading expenses", e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Error loading data", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private List<Expense> filterExpenses(List<Expense> expenses) {
         if (searchQuery.isEmpty()) {
             return new ArrayList<>(expenses);
         }
 
-        List<DataManager.Expense> filtered = new ArrayList<>();
-        for (DataManager.Expense expense : expenses) {
-            // Search in note, category, amount, and date
+        List<Expense> filtered = new ArrayList<>();
+        for (Expense expense : expenses) {
+            
             if (expense.note != null && expense.note.toLowerCase().contains(searchQuery)) {
                 filtered.add(expense);
             } else if (expense.category != null && expense.category.toLowerCase().contains(searchQuery)) {
@@ -196,15 +220,8 @@ public class HomeFragment extends Fragment {
         return filtered;
     }
 
-    /**
-     * Sorts expenses based on the current sort type.
-     * Supports sorting by date (newest/oldest), amount (high/low), and category (A-Z/Z-A).
-     * 
-     * @param expenses List of expenses to sort
-     * @return Sorted list of expenses
-     */
-    private List<DataManager.Expense> sortExpenses(List<DataManager.Expense> expenses) {
-        List<DataManager.Expense> sorted = new ArrayList<>(expenses);
+    private List<Expense> sortExpenses(List<Expense> expenses) {
+        List<Expense> sorted = new ArrayList<>(expenses);
         
         switch (currentSortType) {
             case "date_desc":
@@ -214,7 +231,7 @@ public class HomeFragment extends Fragment {
                     if (d1 == null && d2 == null) return 0;
                     if (d1 == null) return 1;
                     if (d2 == null) return -1;
-                    return d2.compareTo(d1); // Newest first
+                    return d2.compareTo(d1); 
                 });
                 break;
             case "date_asc":
@@ -224,14 +241,14 @@ public class HomeFragment extends Fragment {
                     if (d1 == null && d2 == null) return 0;
                     if (d1 == null) return 1;
                     if (d2 == null) return -1;
-                    return d1.compareTo(d2); // Oldest first
+                    return d1.compareTo(d2); 
                 });
                 break;
             case "amount_desc":
-                Collections.sort(sorted, (e1, e2) -> Double.compare(e2.amount, e1.amount)); // Highest first
+                Collections.sort(sorted, (e1, e2) -> Double.compare(e2.amount, e1.amount)); 
                 break;
             case "amount_asc":
-                Collections.sort(sorted, (e1, e2) -> Double.compare(e1.amount, e2.amount)); // Lowest first
+                Collections.sort(sorted, (e1, e2) -> Double.compare(e1.amount, e2.amount)); 
                 break;
             case "category_asc":
                 Collections.sort(sorted, (e1, e2) -> {
@@ -252,16 +269,9 @@ public class HomeFragment extends Fragment {
         return sorted;
     }
 
-    /**
-     * Parses a date string into a Date object.
-     * Supports multiple date formats including "Today" keyword.
-     * 
-     * @param dateStr Date string to parse
-     * @return Parsed Date object, or current date if parsing fails or "Today"
-     */
     private Date parseDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty() || dateStr.equals("Today")) {
-            return new Date(); // Return current date for "Today"
+            return new Date(); 
         }
         
         SimpleDateFormat[] formats = {
@@ -275,16 +285,12 @@ public class HomeFragment extends Fragment {
             try {
                 return format.parse(dateStr);
             } catch (ParseException e) {
-                // Try next format
+                
             }
         }
         return null;
     }
 
-    /**
-     * Shows a popup menu with sort options.
-     * Updates currentSortType and reloads expenses when an option is selected.
-     */
     private void showSortMenu() {
         PopupMenu popupMenu = new PopupMenu(requireContext(), btnSort);
         popupMenu.getMenu().add("Date (Newest First)");
@@ -319,44 +325,30 @@ public class HomeFragment extends Fragment {
         popupMenu.show();
     }
 
-    /**
-     * Called when fragment becomes visible.
-     * Reloads expenses to show any changes made in other fragments.
-     */
     @Override
     public void onResume() {
         super.onResume();
         loadExpenses();
     }
 
-    /**
-     * Shows a dialog to edit an existing expense.
-     * Pre-fills fields with current expense data and allows modification.
-     * Checks budget before saving updates.
-     * 
-     * @param expense The expense to edit
-     */
-    private void showEditDialog(DataManager.Expense expense) {
+    private void showEditDialog(Expense expense) {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_expense, null);
         
         TextInputEditText etAmount = dialogView.findViewById(R.id.etAmount);
         TextInputEditText etNote = dialogView.findViewById(R.id.etNote);
         TextInputEditText etDate = dialogView.findViewById(R.id.etDate);
         GridLayout gridCategories = dialogView.findViewById(R.id.gridCategories);
-        
-        // Pre-fill with existing values
+
         etAmount.setText(String.valueOf(expense.amount));
         etNote.setText(expense.note);
         etDate.setText(expense.date);
-        
-        // Set up date picker
+
         etDate.setOnClickListener(v -> showDatePickerDialog(etDate, expense.date));
         
         String[] categories = {"Food", "Transport", "Shopping", "Bills", "Entertainment", "Others"};
         String[] categoryIcons = {"🍔", "🚗", "🛍️", "📜", "🍿", "✨"};
         String[] selectedCategory = {expense.category};
-        
-        // Setup category grid
+
         for (int i = 0; i < categories.length; i++) {
             MaterialCardView card = new MaterialCardView(requireContext());
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
@@ -417,15 +409,14 @@ public class HomeFragment extends Fragment {
                         return;
                     }
 
-                    // Check budget before updating (only if category changed or amount changed)
                     if (!selectedCategory[0].equals(expense.category) || amount != expense.amount) {
-                        DataManager.BudgetCheckResult budgetCheck;
+                        BudgetCheckResult budgetCheck;
                         if (!selectedCategory[0].equals(expense.category)) {
-                            // Category changed, check new category budget
-                            budgetCheck = dataManager.checkBudget(selectedCategory[0], amount);
+                            
+                            budgetCheck = expenseService.checkBudget(selectedCategory[0], amount);
                         } else {
-                            // Same category, check with expense ID to exclude it from calculation
-                            budgetCheck = dataManager.checkBudgetOnUpdate(selectedCategory[0], amount, expense.id);
+                            
+                            budgetCheck = expenseService.checkBudgetOnUpdate(selectedCategory[0], amount, expense.id);
                         }
                         
                         if (budgetCheck.exceedsBudget) {
@@ -434,7 +425,7 @@ public class HomeFragment extends Fragment {
                         }
                     }
 
-                    if (dataManager.updateExpense(expense.id, selectedCategory[0], amount, 
+                    if (expenseService.updateExpense(expense.id, selectedCategory[0], amount, 
                             note.isEmpty() ? "No note" : note, date.isEmpty() ? "Today" : date)) {
                         loadExpenses();
                         Toast.makeText(requireContext(), "Expense updated", Toast.LENGTH_SHORT).show();
@@ -451,17 +442,9 @@ public class HomeFragment extends Fragment {
         dialog.show();
     }
 
-    /**
-     * Shows a date picker dialog.
-     * Updates the date field when a date is selected.
-     * 
-     * @param etDate The EditText field to update with selected date
-     * @param currentDateStr Current date string to pre-select in picker
-     */
     private void showDatePickerDialog(TextInputEditText etDate, String currentDateStr) {
         Calendar calendar = Calendar.getInstance();
-        
-        // Try to parse existing date if available
+
         if (currentDateStr != null && !currentDateStr.isEmpty()) {
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
@@ -470,7 +453,7 @@ public class HomeFragment extends Fragment {
                     calendar.setTime(date);
                 }
             } catch (Exception e) {
-                // If parsing fails, use current date
+                
             }
         }
         
@@ -492,18 +475,7 @@ public class HomeFragment extends Fragment {
         datePickerDialog.show();
     }
 
-    /**
-     * Shows an alert dialog when updating an expense would exceed budget.
-     * Allows user to proceed anyway or cancel the update.
-     * 
-     * @param category Expense category
-     * @param budgetCheck Budget check result containing limit and spending info
-     * @param amount Expense amount
-     * @param expense Expense being updated
-     * @param note Expense note
-     * @param date Expense date
-     */
-    private void showBudgetExceededAlert(String category, DataManager.BudgetCheckResult budgetCheck, double amount, DataManager.Expense expense, String note, String date) {
+    private void showBudgetExceededAlert(String category, BudgetCheckResult budgetCheck, double amount, Expense expense, String note, String date) {
         String message = String.format(Locale.getDefault(),
             "Budget Limit Reached!\n\n" +
             "Category: %s\n" +
@@ -523,8 +495,8 @@ public class HomeFragment extends Fragment {
             .setTitle("⚠️ Budget Limit Exceeded")
             .setMessage(message)
             .setPositiveButton("Update Anyway", (dialog, which) -> {
-                // User chose to update despite exceeding budget
-                if (dataManager.updateExpense(expense.id, category, amount, 
+                
+                if (expenseService.updateExpense(expense.id, category, amount, 
                         note.isEmpty() ? "No note" : note, date.isEmpty() ? "Today" : date)) {
                     loadExpenses();
                     Toast.makeText(requireContext(), "Expense updated", Toast.LENGTH_SHORT).show();
@@ -537,14 +509,6 @@ public class HomeFragment extends Fragment {
             .show();
     }
 
-    /**
-     * Updates the visual appearance of category selection grid.
-     * Highlights the selected category with primary color.
-     * 
-     * @param gridCategories The GridLayout containing category cards
-     * @param categories Array of category names
-     * @param selected Currently selected category name
-     */
     private void updateCategorySelection(GridLayout gridCategories, String[] categories, String selected) {
         int surfaceColor = getMaterialColor("colorSurface");
         int primaryColor = getMaterialColor("colorPrimary");
@@ -567,36 +531,25 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    /**
-     * Gets a color value from the current theme.
-     * 
-     * @param attr Theme attribute ID
-     * @return Color value, or black as fallback
-     */
     private int getThemeColor(int attr) {
+        if (getContext() == null) return 0xFF000000;
         TypedValue typedValue = new TypedValue();
-        if (requireContext().getTheme().resolveAttribute(attr, typedValue, true)) {
+        if (getContext().getTheme().resolveAttribute(attr, typedValue, true)) {
             if (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT &&
                 typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT) {
                 return typedValue.data;
-            } else {
-                return ContextCompat.getColor(requireContext(), typedValue.resourceId);
+            } else if (typedValue.resourceId != 0) {
+                return ContextCompat.getColor(getContext(), typedValue.resourceId);
             }
         }
         return 0xFF000000;
     }
 
-    /**
-     * Gets a Material Design color from theme attributes.
-     * Supports Material3 color system with fallbacks.
-     * 
-     * @param attrName Name of the color attribute (e.g., "colorPrimary")
-     * @return Color value, or black as fallback
-     */
     private int getMaterialColor(String attrName) {
-        int attrId = requireContext().getResources().getIdentifier(attrName, "attr", requireContext().getPackageName());
+        if (getContext() == null) return 0xFF000000;
+        int attrId = getContext().getResources().getIdentifier(attrName, "attr", getContext().getPackageName());
         if (attrId == 0) {
-            attrId = requireContext().getResources().getIdentifier(attrName, "attr", "com.google.android.material");
+            attrId = getContext().getResources().getIdentifier(attrName, "attr", "com.google.android.material");
         }
         if (attrId != 0) {
             return getThemeColor(attrId);

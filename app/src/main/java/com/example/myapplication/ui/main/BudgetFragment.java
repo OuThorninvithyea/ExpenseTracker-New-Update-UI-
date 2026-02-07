@@ -1,4 +1,11 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.main;
+
+import com.example.myapplication.R;
+import com.example.myapplication.adapters.BudgetAdapter;
+import com.example.myapplication.data.repositories.BudgetRepository;
+import com.example.myapplication.services.ExpenseService;
+import com.example.myapplication.models.Budget;
+import com.example.myapplication.models.Expense;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
@@ -24,22 +31,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * BudgetFragment - Manages budget limits for expense categories.
- * 
- * Features:
- * - Display all budgets with spent amounts and progress bars
- * - Add new budgets for categories
- * - Edit existing budgets (amount only, category cannot be changed)
- * - Delete budgets
- * - Shows budget warnings when limits are approached or exceeded
- * - Supports custom categories via "Others" option
- */
 public class BudgetFragment extends Fragment {
     private RecyclerView rvBudgets;
     private MaterialButton btnAddBudget;
     private TextView tvEmptyState;
-    private DataManager dataManager;
+    private BudgetRepository budgetRepository;
+    private ExpenseService expenseService;
     private BudgetAdapter adapter;
     private List<BudgetAdapter.BudgetItem> budgetItems;
 
@@ -53,93 +50,94 @@ public class BudgetFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        dataManager = DataManager.getInstance(requireContext());
+        budgetRepository = new BudgetRepository(requireContext());
+        expenseService = new ExpenseService(requireContext());
+
         rvBudgets = view.findViewById(R.id.rvBudgets);
         btnAddBudget = view.findViewById(R.id.btnAddBudget);
         tvEmptyState = view.findViewById(R.id.tvEmptyState);
 
         rvBudgets.setLayoutManager(new LinearLayoutManager(requireContext()));
         budgetItems = new ArrayList<>();
+
         adapter = new BudgetAdapter(budgetItems, new BudgetAdapter.OnBudgetClickListener() {
             @Override
-            public void onEditClick(DataManager.Budget budget) {
+            public void onEditClick(Budget budget) {
+                
                 showEditBudgetDialog(budget);
             }
 
             @Override
-            public void onDeleteClick(DataManager.Budget budget) {
+            public void onDeleteClick(Budget budget) {
+                
                 showDeleteConfirmation(budget);
             }
         });
         rvBudgets.setAdapter(adapter);
-        
+
         btnAddBudget.setOnClickListener(v -> showAddBudgetDialog());
 
         loadBudgets();
     }
 
-    /**
-     * Loads budgets from database and calculates spent amounts per category.
-     * Updates RecyclerView adapter and shows/hides empty state message.
-     */
     private void loadBudgets() {
-        List<DataManager.Budget> budgets = dataManager.getBudgets();
-        List<DataManager.Expense> expenses = dataManager.getExpenses();
-        
-        // Calculate spent amounts per category
-        Map<String, Double> categoryTotals = new HashMap<>();
-        for (DataManager.Expense expense : expenses) {
-            double currentTotal = categoryTotals.getOrDefault(expense.category, 0.0);
-            categoryTotals.put(expense.category, currentTotal + expense.amount);
-        }
-        
-        // Create budget items with spent amounts
-        budgetItems.clear();
-        for (DataManager.Budget budget : budgets) {
-            double spent = categoryTotals.getOrDefault(budget.category, 0.0);
-            budgetItems.add(new BudgetAdapter.BudgetItem(budget, spent));
-        }
-        
-        adapter.updateBudgets(budgetItems);
-        
-        // Show/hide empty state
-        if (budgets.isEmpty()) {
-            rvBudgets.setVisibility(View.GONE);
-            if (tvEmptyState != null) {
-                tvEmptyState.setVisibility(View.VISIBLE);
+        try {
+            if (budgetRepository == null || expenseService == null) return;
+
+            List<Budget> budgets = budgetRepository.getBudgets();
+            if (budgets == null) budgets = new ArrayList<>();
+            
+            List<Expense> expenses = expenseService.getExpenses();
+            if (expenses == null) expenses = new ArrayList<>();
+
+            Map<String, Double> categoryTotals = new HashMap<>();
+            for (Expense expense : expenses) {
+                if (expense.category != null) {
+                    double currentTotal = categoryTotals.getOrDefault(expense.category, 0.0);
+                    categoryTotals.put(expense.category, currentTotal + expense.amount);
+                }
             }
-        } else {
-            rvBudgets.setVisibility(View.VISIBLE);
-            if (tvEmptyState != null) {
-                tvEmptyState.setVisibility(View.GONE);
+
+            budgetItems.clear();
+            for (Budget budget : budgets) {
+                if (budget != null && budget.category != null) {
+                    double spent = categoryTotals.getOrDefault(budget.category, 0.0);
+                    budgetItems.add(new BudgetAdapter.BudgetItem(budget, spent));
+                }
+            }
+            
+            if (adapter != null) {
+                adapter.updateBudgets(budgetItems);
+            }
+
+            if (budgets.isEmpty()) {
+                rvBudgets.setVisibility(View.GONE);
+                if (tvEmptyState != null) {
+                    tvEmptyState.setVisibility(View.VISIBLE);
+                }
+            } else {
+                rvBudgets.setVisibility(View.VISIBLE);
+                if (tvEmptyState != null) {
+                    tvEmptyState.setVisibility(View.GONE);
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("BudgetFragment", "Error loading budgets", e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Error loading budgets", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    /**
-     * Shows dialog to add a new budget.
-     */
     private void showAddBudgetDialog() {
         showBudgetDialog(null);
     }
 
-    /**
-     * Shows dialog to edit an existing budget.
-     * Category selection is disabled when editing.
-     * 
-     * @param budget The budget to edit
-     */
-    private void showEditBudgetDialog(DataManager.Budget budget) {
+    private void showEditBudgetDialog(Budget budget) {
         showBudgetDialog(budget);
     }
 
-    /**
-     * Shows dialog for adding or editing a budget.
-     * Handles both new budget creation and existing budget editing.
-     * 
-     * @param existingBudget Budget to edit (null for new budget)
-     */
-    private void showBudgetDialog(DataManager.Budget existingBudget) {
+    private void showBudgetDialog(Budget existingBudget) {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_budget, null);
         
         TextInputEditText etAmount = dialogView.findViewById(R.id.etBudgetAmount);
@@ -152,13 +150,11 @@ public class BudgetFragment extends Fragment {
         String[] selectedCategory = {existingBudget != null ? existingBudget.category : categories[0]};
         String[] customCategoryName = {""};
         TextView[] othersCategoryLabel = {null};
-        
-        // Pre-fill amount if editing
+
         if (existingBudget != null) {
             etAmount.setText(String.format(Locale.getDefault(), "%.2f", existingBudget.limit));
         }
-        
-        // Setup category grid
+
         for (int i = 0; i < categories.length; i++) {
             MaterialCardView card = new MaterialCardView(requireContext());
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
@@ -183,7 +179,6 @@ public class BudgetFragment extends Fragment {
             tvLabel.setPadding(8, 0, 8, 16);
             tvLabel.setTextColor(getMaterialColor("colorOnSurfaceVariant"));
 
-            // Store reference to "Others" category label
             if (categories[i].equals("Others")) {
                 othersCategoryLabel[0] = tvLabel;
             }
@@ -198,17 +193,17 @@ public class BudgetFragment extends Fragment {
             card.setOnClickListener(v -> {
                 if (category.equals("Others")) {
                     selectedCategory[0] = "Others";
-                    // Show the custom category input field
+                    
                     tilCustomCategory.setVisibility(View.VISIBLE);
                     etCustomCategory.requestFocus();
                     updateCategorySelection(gridCategories, categories, selectedCategory[0], othersCategoryLabel[0], customCategoryName[0]);
                 } else {
                     selectedCategory[0] = category;
-                    customCategoryName[0] = ""; // Clear custom category when selecting a predefined one
-                    // Hide the custom category input field
+                    customCategoryName[0] = ""; 
+                    
                     tilCustomCategory.setVisibility(View.GONE);
                     etCustomCategory.setText("");
-                    // Reset "Others" label if it was showing custom name
+                    
                     if (othersCategoryLabel[0] != null) {
                         othersCategoryLabel[0].setText("Others");
                     }
@@ -218,8 +213,7 @@ public class BudgetFragment extends Fragment {
 
             gridCategories.addView(card);
         }
-        
-        // Check if existing budget is a custom category (not in predefined list)
+
         if (existingBudget != null) {
             boolean isPredefinedCategory = false;
             for (String cat : categories) {
@@ -229,7 +223,7 @@ public class BudgetFragment extends Fragment {
                 }
             }
             if (!isPredefinedCategory) {
-                // It's a custom category
+                
                 selectedCategory[0] = "Others";
                 customCategoryName[0] = existingBudget.category;
                 tilCustomCategory.setVisibility(View.VISIBLE);
@@ -242,18 +236,16 @@ public class BudgetFragment extends Fragment {
         
         updateCategorySelection(gridCategories, categories, selectedCategory[0], othersCategoryLabel[0], customCategoryName[0]);
 
-        // Disable category selection if editing (category cannot be changed)
         if (existingBudget != null) {
             for (int i = 0; i < gridCategories.getChildCount(); i++) {
                 gridCategories.getChildAt(i).setEnabled(false);
                 gridCategories.getChildAt(i).setAlpha(0.6f);
             }
-            // Also disable custom category input when editing
+            
             tilCustomCategory.setEnabled(false);
             etCustomCategory.setEnabled(false);
         }
-        
-        // Listen for custom category input changes
+
         etCustomCategory.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -261,7 +253,7 @@ public class BudgetFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 customCategoryName[0] = s.toString().trim();
-                // Update the "Others" label to show custom name
+                
                 if (othersCategoryLabel[0] != null && selectedCategory[0].equals("Others")) {
                     if (!customCategoryName[0].isEmpty()) {
                         othersCategoryLabel[0].setText(customCategoryName[0]);
@@ -296,17 +288,15 @@ public class BudgetFragment extends Fragment {
                         return;
                     }
 
-                    // Validate custom category if "Others" is selected
                     if (selectedCategory[0].equals("Others") && customCategoryName[0].isEmpty()) {
                         Toast.makeText(requireContext(), "Please enter a category name", Toast.LENGTH_SHORT).show();
                         etCustomCategory.requestFocus();
                         return;
                     }
 
-                    // Use custom category name if "Others" is selected, otherwise use selected category
                     String categoryToSave = selectedCategory[0].equals("Others") ? customCategoryName[0] : selectedCategory[0];
                     
-                    if (dataManager.setBudget(categoryToSave, amount)) {
+                    if (budgetRepository.setBudget(categoryToSave, amount)) {
                         loadBudgets();
                         String message = existingBudget != null ? "Budget updated successfully" : "Budget set successfully";
                         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
@@ -325,7 +315,7 @@ public class BudgetFragment extends Fragment {
     }
 
     private void updateCategorySelection(GridLayout gridCategories, String[] categories, String selected, TextView othersLabel, String customName) {
-        // Theme-aware colors
+        
         int surfaceColor = getMaterialColor("colorSurface");
         int surfaceVariantColor = getMaterialColor("colorSurfaceVariant");
         int primaryColor = getMaterialColor("colorPrimary");
@@ -335,36 +325,37 @@ public class BudgetFragment extends Fragment {
         for (int i = 0; i < gridCategories.getChildCount(); i++) {
             MaterialCardView card = (MaterialCardView) gridCategories.getChildAt(i);
             TextView tvLabel = (TextView) ((android.widget.LinearLayout) card.getChildAt(0)).getChildAt(1);
-            
-            // Check if this is the "Others" category
+
             boolean isOthersCategory = (tvLabel == othersLabel);
-            
-            // Update "Others" label if custom name is set and it's selected
+
             if (isOthersCategory) {
                 if (selected.equals("Others") && !customName.isEmpty()) {
+                    
                     tvLabel.setText(customName);
                 } else {
+                    
                     tvLabel.setText("Others");
                 }
             }
-            
-            // Determine if this category is selected
+
             boolean isSelected = false;
             if (isOthersCategory) {
+                
                 isSelected = selected.equals("Others");
             } else {
-                // For other categories, compare with the original category name
+                
                 String originalCategoryName = categories[i];
                 isSelected = originalCategoryName.equals(selected);
             }
 
             if (isSelected) {
+                
                 card.setCardBackgroundColor(primaryContainerColor);
                 card.setStrokeWidth(4);
                 card.setStrokeColor(primaryColor);
                 tvLabel.setTextColor(primaryColor);
             } else {
-                // Slightly elevated look without harsh white tiles
+                
                 card.setCardBackgroundColor(surfaceVariantColor != 0 ? surfaceVariantColor : surfaceColor);
                 card.setStrokeWidth(0);
                 tvLabel.setTextColor(onSurfaceVariantColor);
@@ -373,31 +364,38 @@ public class BudgetFragment extends Fragment {
     }
 
     private int getThemeColor(int attr) {
+        if (getContext() == null) return 0xFF000000;
         TypedValue typedValue = new TypedValue();
-        if (requireContext().getTheme().resolveAttribute(attr, typedValue, true)) {
+        
+        if (getContext().getTheme().resolveAttribute(attr, typedValue, true)) {
+            
             if (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT && 
                 typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT) {
                 return typedValue.data;
-            } else {
-                return ContextCompat.getColor(requireContext(), typedValue.resourceId);
+            } else if (typedValue.resourceId != 0) {
+                
+                return ContextCompat.getColor(getContext(), typedValue.resourceId);
             }
         }
-        // Fallback to a default color if attribute not found
-        return 0xFF000000; // Black as fallback
+        
+        return 0xFF000000; 
     }
-    
+
     private int getMaterialColor(String attrName) {
-        int attrId = requireContext().getResources().getIdentifier(
-            attrName, "attr", requireContext().getPackageName());
+        if (getContext() == null) return 0xFF000000;
+        
+        int attrId = getContext().getResources().getIdentifier(
+            attrName, "attr", getContext().getPackageName());
         if (attrId == 0) {
-            // Try Material library package
-            attrId = requireContext().getResources().getIdentifier(
+            
+            attrId = getContext().getResources().getIdentifier(
                 attrName, "attr", "com.google.android.material");
         }
         if (attrId != 0) {
+            
             return getThemeColor(attrId);
         }
-        // Fallback colors
+        
         switch (attrName) {
             case "colorSurface":
                 return getThemeColor(android.R.attr.colorBackground);
@@ -412,17 +410,12 @@ public class BudgetFragment extends Fragment {
         }
     }
 
-    /**
-     * Shows confirmation dialog before deleting a budget.
-     * 
-     * @param budget The budget to delete
-     */
-    private void showDeleteConfirmation(DataManager.Budget budget) {
+    private void showDeleteConfirmation(Budget budget) {
         new AlertDialog.Builder(requireContext())
             .setTitle("Delete Budget")
             .setMessage("Are you sure you want to delete the budget for " + budget.category + "?")
             .setPositiveButton("Delete", (dialog, which) -> {
-                if (dataManager.deleteBudget(budget.category)) {
+                if (budgetRepository.deleteBudget(budget.category)) {
                     loadBudgets();
                     Toast.makeText(requireContext(), "Budget deleted", Toast.LENGTH_SHORT).show();
                 } else {
@@ -436,6 +429,7 @@ public class BudgetFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        
         loadBudgets();
     }
 }

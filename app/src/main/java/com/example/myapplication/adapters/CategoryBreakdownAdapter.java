@@ -1,4 +1,7 @@
-package com.example.myapplication;
+package com.example.myapplication.adapters;
+
+import com.example.myapplication.R;
+import com.example.myapplication.models.Expense;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,15 +12,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * CategoryBreakdownAdapter - RecyclerView adapter for displaying category spending breakdown.
- * 
- * Shows analytics data for each category:
- * - Category icon
- * - Category name
- * - Total amount spent in category
- * - Percentage of total expenses
- */
 public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreakdownAdapter.CategoryBreakdownViewHolder> {
     private List<CategoryBreakdown> breakdowns;
 
@@ -28,6 +22,7 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
     @NonNull
     @Override
     public CategoryBreakdownViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        
         View view = LayoutInflater.from(parent.getContext())
             .inflate(R.layout.item_category_breakdown, parent, false);
         return new CategoryBreakdownViewHolder(view);
@@ -35,6 +30,7 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
 
     @Override
     public void onBindViewHolder(@NonNull CategoryBreakdownViewHolder holder, int position) {
+        
         CategoryBreakdown breakdown = breakdowns.get(position);
         holder.bind(breakdown);
     }
@@ -46,6 +42,7 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
 
     public void updateBreakdowns(List<CategoryBreakdown> newBreakdowns) {
         this.breakdowns = newBreakdowns;
+        
         notifyDataSetChanged();
     }
 
@@ -54,6 +51,7 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
 
         public CategoryBreakdownViewHolder(@NonNull View itemView) {
             super(itemView);
+            
             tvCategoryIcon = itemView.findViewById(R.id.tvCategoryIcon);
             tvCategoryName = itemView.findViewById(R.id.tvCategoryName);
             tvCategoryAmount = itemView.findViewById(R.id.tvCategoryAmount);
@@ -61,11 +59,13 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
         }
 
         public void bind(CategoryBreakdown breakdown) {
-            tvCategoryName.setText(breakdown.category);
-            tvCategoryAmount.setText(String.format(Locale.getDefault(), "$%.2f", breakdown.amount));
-            tvCategoryPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", breakdown.percentage));
             
-            // Set category icon
+            tvCategoryName.setText(breakdown.category);
+            
+            tvCategoryAmount.setText(String.format(Locale.getDefault(), "$%.2f", breakdown.amount));
+            
+            tvCategoryPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", breakdown.percentage));
+
             String icon = getCategoryIcon(breakdown.category);
             tvCategoryIcon.setText(icon);
         }
@@ -84,11 +84,11 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
     }
 
     public static class CategoryBreakdown {
-        String category;
-        double amount;
-        double percentage;
+        public String category;    
+        public double amount;      
+        public double percentage;  
 
-        CategoryBreakdown(String category, double amount, double percentage) {
+        public CategoryBreakdown(String category, double amount, double percentage) {
             this.category = category;
             this.amount = amount;
             this.percentage = percentage;

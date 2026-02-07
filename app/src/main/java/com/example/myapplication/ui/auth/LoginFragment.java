@@ -1,4 +1,10 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.auth;
+
+import com.example.myapplication.R;
+import com.example.myapplication.data.repositories.AuthRepository;
+import com.example.myapplication.models.LoginResult;
+import com.example.myapplication.ui.main.HomeFragment;
+import com.example.myapplication.ui.main.MainActivity;
 
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -13,21 +19,11 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
-/**
- * LoginFragment - Handles user authentication/login.
- * 
- * Features:
- * - Username and password input
- * - Login validation
- * - Navigation to signup screen
- * - Forgot password navigation
- * - Error message display
- */
 public class LoginFragment extends Fragment {
     private TextInputEditText etUsername, etPassword;
-    private MaterialButton btnLogin, btnSignup, btnForgotPassword;
+    private MaterialButton btnLogin, btnSignup, btnForgotPassword, btnGuest;
     private TextView tvError;
-    private DataManager dataManager;
+    private AuthRepository authRepository;
 
     @Nullable
     @Override
@@ -39,21 +35,23 @@ public class LoginFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Initialize DataManager
-        dataManager = DataManager.getInstance(requireContext());
+        authRepository = new AuthRepository(requireContext());
 
-        // Initialize UI components
         etUsername = view.findViewById(R.id.etUsername);
         etPassword = view.findViewById(R.id.etPassword);
         btnLogin = view.findViewById(R.id.btnLogin);
         btnSignup = view.findViewById(R.id.btnSignup);
         btnForgotPassword = view.findViewById(R.id.btnForgotPassword);
+        btnGuest = view.findViewById(R.id.btnGuest);
         tvError = view.findViewById(R.id.tvError);
 
-        // Setup login button click listener
         btnLogin.setOnClickListener(v -> attemptLogin());
 
-        // Setup signup button - navigate to signup screen
+        btnGuest.setOnClickListener(v -> {
+            authRepository.ensureGuestUser();
+            navigateToHome();
+        });
+
         btnSignup.setOnClickListener(v -> {
             if (getActivity() != null) {
                 getActivity().getSupportFragmentManager().beginTransaction()
@@ -63,7 +61,6 @@ public class LoginFragment extends Fragment {
             }
         });
 
-        // Setup forgot password button - navigate to forgot password screen
         btnForgotPassword.setOnClickListener(v -> {
             if (getActivity() != null) {
                 getActivity().getSupportFragmentManager().beginTransaction()
@@ -74,55 +71,49 @@ public class LoginFragment extends Fragment {
         });
     }
 
-    /**
-     * Attempts to log in the user with provided credentials.
-     * Validates inputs and calls DataManager login method.
-     */
+    private void navigateToHome() {
+        if (getActivity() instanceof MainActivity) {
+            MainActivity mainActivity = (MainActivity) getActivity();
+            mainActivity.getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragmentContainer, new HomeFragment())
+                .commit();
+            
+            mainActivity.bottomNavigation.setVisibility(View.VISIBLE);
+            mainActivity.bottomNavigation.setSelectedItemId(R.id.nav_home);
+        }
+    }
+
     private void attemptLogin() {
-        // Hide previous error messages
+        
         tvError.setVisibility(View.GONE);
 
-        // Get input values
         String username = etUsername.getText() != null ? etUsername.getText().toString().trim() : "";
         String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
 
-        // Validate inputs
         if (TextUtils.isEmpty(username)) {
-            tvError.setText("Please enter your username");
+            tvError.setText("Please enter a username");
             tvError.setVisibility(View.VISIBLE);
-            etUsername.requestFocus();
             return;
         }
 
         if (TextUtils.isEmpty(password)) {
-            tvError.setText("Please enter your password");
+            tvError.setText("Please enter a password");
             tvError.setVisibility(View.VISIBLE);
-            etPassword.requestFocus();
             return;
         }
 
-        // Attempt login using DataManager
-        DataManager.LoginResult result = dataManager.login(username, password);
+        LoginResult result = authRepository.login(username, password);
 
         if (result.success) {
-            // Login successful - navigate to main app
-            Toast.makeText(requireContext(), "Welcome back, " + result.user.username + "!", Toast.LENGTH_SHORT).show();
-            
-            // Navigate to HomeFragment
-            if (getActivity() instanceof MainActivity) {
-                MainActivity mainActivity = (MainActivity) getActivity();
-                mainActivity.getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragmentContainer, new HomeFragment())
-                    .commit();
-                // Show bottom navigation
-                mainActivity.bottomNavigation.setVisibility(View.VISIBLE);
-                mainActivity.bottomNavigation.setSelectedItemId(R.id.nav_home);
+            Toast.makeText(getContext(), "Login successful!", Toast.LENGTH_SHORT).show();
+            if (getActivity() instanceof com.example.myapplication.ui.main.MainActivity) {
+                ((com.example.myapplication.ui.main.MainActivity) getActivity()).navigateToHome();
             }
         } else {
-            // Login failed - show error message
-            tvError.setText(result.error != null ? result.error : "Login failed. Please try again.");
+            
+            tvError.setText(result.error);
             tvError.setVisibility(View.VISIBLE);
-            etPassword.setText(""); // Clear password field
+            etPassword.setText(""); 
         }
     }
 }

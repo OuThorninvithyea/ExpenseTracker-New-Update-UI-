@@ -1,4 +1,7 @@
-package com.example.myapplication;
+package com.example.myapplication.adapters;
+
+import com.example.myapplication.R;
+import com.example.myapplication.models.Expense;
 
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -11,29 +14,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * ExpenseAdapter - RecyclerView adapter for displaying expense items.
- * 
- * Displays expenses in a list with:
- * - Category icon and name
- * - Expense amount
- * - Note/description
- * - Date
- * - Menu button for edit/delete actions
- */
 public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseViewHolder> {
-    private List<DataManager.Expense> expenses;
+    private List<Expense> expenses;
     private OnExpenseClickListener listener;
 
-    /**
-     * Interface for handling expense item click events.
-     */
     public interface OnExpenseClickListener {
-        void onEditClick(DataManager.Expense expense);    // Called when edit is clicked
-        void onDeleteClick(DataManager.Expense expense);  // Called when delete is clicked
+        void onEditClick(Expense expense);    
+        void onDeleteClick(Expense expense);  
     }
 
-    public ExpenseAdapter(List<DataManager.Expense> expenses, OnExpenseClickListener listener) {
+    public ExpenseAdapter(List<Expense> expenses, OnExpenseClickListener listener) {
         this.expenses = expenses;
         this.listener = listener;
     }
@@ -41,6 +31,7 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
     @NonNull
     @Override
     public ExpenseViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        
         View view = LayoutInflater.from(parent.getContext())
             .inflate(R.layout.item_expense, parent, false);
         return new ExpenseViewHolder(view);
@@ -48,7 +39,8 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
 
     @Override
     public void onBindViewHolder(@NonNull ExpenseViewHolder holder, int position) {
-        DataManager.Expense expense = expenses.get(position);
+        
+        Expense expense = expenses.get(position);
         holder.bind(expense);
     }
 
@@ -57,8 +49,9 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
         return expenses.size();
     }
 
-    public void updateExpenses(List<DataManager.Expense> newExpenses) {
+    public void updateExpenses(List<Expense> newExpenses) {
         this.expenses = newExpenses;
+        
         notifyDataSetChanged();
     }
 
@@ -68,6 +61,7 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
 
         public ExpenseViewHolder(@NonNull View itemView) {
             super(itemView);
+            
             tvCategory = itemView.findViewById(R.id.tvCategory);
             tvNote = itemView.findViewById(R.id.tvNote);
             tvAmount = itemView.findViewById(R.id.tvAmount);
@@ -76,32 +70,33 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
             btnMenu = itemView.findViewById(R.id.btnMenu);
         }
 
-        public void bind(DataManager.Expense expense) {
-            tvCategory.setText(expense.category);
-            tvNote.setText(expense.note);
-            tvAmount.setText(String.format(Locale.getDefault(), "-$%.2f", expense.amount));
+        public void bind(Expense expense) {
             
-            // Set date - show "Category • Date" format or just date if category is already shown separately
+            tvCategory.setText(expense.category);
+            
+            tvNote.setText(expense.note);
+            
+            tvAmount.setText(String.format(Locale.getDefault(), "-$%.2f", expense.amount));
+
             if (expense.date != null && !expense.date.isEmpty()) {
                 tvDate.setText(expense.date);
             } else {
                 tvDate.setText("Today");
             }
-            
-            // Set category icon
+
             String icon = getCategoryIcon(expense.category);
             tvCategoryIcon.setText(icon);
 
-            // Setup 3-dot menu button
             btnMenu.setOnClickListener(v -> {
                 PopupMenu popupMenu = new PopupMenu(v.getContext(), v);
                 popupMenu.getMenu().add("Edit");
                 popupMenu.getMenu().add("Delete");
-                
+
                 popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
                         if (listener != null) {
+                            
                             if (item.getTitle().toString().equals("Edit")) {
                                 listener.onEditClick(expense);
                             } else if (item.getTitle().toString().equals("Delete")) {
@@ -111,17 +106,11 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
                         return true;
                     }
                 });
-                
+
                 popupMenu.show();
             });
         }
 
-        /**
-         * Returns emoji icon for a category.
-         * 
-         * @param category Category name
-         * @return Emoji string for the category
-         */
         private String getCategoryIcon(String category) {
             switch (category) {
                 case "Food": return "🍔";

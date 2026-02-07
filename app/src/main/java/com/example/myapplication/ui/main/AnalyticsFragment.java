@@ -1,4 +1,9 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.main;
+
+import com.example.myapplication.R;
+import com.example.myapplication.adapters.CategoryBreakdownAdapter;
+import com.example.myapplication.services.ExpenseService;
+import com.example.myapplication.models.Expense;
 
 import android.os.Bundle;
 import android.text.Editable;
@@ -27,30 +32,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * AnalyticsFragment - Displays expense analytics and statistics.
- * 
- * Features:
- * - Total expenses and transaction count
- * - Weekly spending chart (last 7 days)
- * - Category breakdown with amounts and percentages
- * - Search functionality to filter categories
- * - Sort options (by amount, name, percentage)
- */
 public class AnalyticsFragment extends Fragment {
-    // UI Components
-    private RecyclerView rvCategoryBreakdown;     // RecyclerView for category breakdown list
-    private TextView tvTotalExpenses, tvTransactionCount;  // Display total and count
-    private TextInputEditText etSearch;           // Search input
-    private MaterialButton btnSort;               // Sort button
-    private WeeklyOverviewChartView weeklyChart;  // Custom chart view for weekly spending
-    private DataManager dataManager;              // DataManager singleton
     
-    // Data and state
-    private CategoryBreakdownAdapter adapter;     // Adapter for category breakdown
-    private List<CategoryBreakdownAdapter.CategoryBreakdown> allBreakdowns;  // All category breakdowns
-    private String currentSortType = "amount_desc";  // Current sort type (default: highest first)
-    private String searchQuery = "";                // Current search query
+    private RecyclerView rvCategoryBreakdown;     
+    private TextView tvTotalExpenses, tvTransactionCount;  
+    private TextInputEditText etSearch;           
+    private MaterialButton btnSort;               
+    private WeeklyOverviewChartView weeklyChart;  
+    private ExpenseService expenseService;              
+
+    private CategoryBreakdownAdapter adapter;     
+    private List<CategoryBreakdownAdapter.CategoryBreakdown> allBreakdowns;  
+    private String currentSortType = "amount_desc";  
+    private String searchQuery = "";                
 
     @Nullable
     @Override
@@ -62,7 +56,8 @@ public class AnalyticsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        dataManager = DataManager.getInstance(requireContext());
+        expenseService = new ExpenseService(requireContext());
+
         rvCategoryBreakdown = view.findViewById(R.id.rvCategoryBreakdown);
         tvTotalExpenses = view.findViewById(R.id.tvTotalExpenses);
         tvTransactionCount = view.findViewById(R.id.tvTransactionCount);
@@ -70,13 +65,13 @@ public class AnalyticsFragment extends Fragment {
         btnSort = view.findViewById(R.id.btnSortAnalytics);
         weeklyChart = view.findViewById(R.id.weeklyChart);
 
-        // Setup search
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                
                 searchQuery = s.toString().toLowerCase().trim();
                 loadAnalytics();
             }
@@ -85,69 +80,92 @@ public class AnalyticsFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
-        // Setup sort button
         btnSort.setOnClickListener(v -> showSortMenu());
 
-        // Load and display analytics data
         loadAnalytics();
     }
 
-    /**
-     * Loads expense data, calculates statistics, and updates UI.
-     * Calculates total expenses, transaction count, weekly chart data, and category breakdowns.
-     */
+    private int getMaterialColor(String attrName) {
+        if (getContext() == null) return 0xFF000000;
+        int attrId = getContext().getResources().getIdentifier(attrName, "attr", getContext().getPackageName());
+        if (attrId == 0) {
+            attrId = getContext().getResources().getIdentifier(attrName, "attr", "com.google.android.material");
+        }
+        if (attrId != 0) {
+            android.util.TypedValue typedValue = new android.util.TypedValue();
+            if (getContext().getTheme().resolveAttribute(attrId, typedValue, true)) {
+                if (typedValue.type >= android.util.TypedValue.TYPE_FIRST_COLOR_INT &&
+                    typedValue.type <= android.util.TypedValue.TYPE_LAST_COLOR_INT) {
+                    return typedValue.data;
+                } else if (typedValue.resourceId != 0) {
+                    return androidx.core.content.ContextCompat.getColor(getContext(), typedValue.resourceId);
+                }
+            }
+        }
+        return 0xFF000000;
+    }
+
     private void loadAnalytics() {
-        List<DataManager.Expense> expenses = dataManager.getExpenses();
-        
-        double total = 0;
-        Map<String, Double> categoryTotals = new HashMap<>();
-        
-        for (DataManager.Expense expense : expenses) {
-            total += expense.amount;
-            categoryTotals.put(expense.category, 
-                categoryTotals.getOrDefault(expense.category, 0.0) + expense.amount);
-        }
+        try {
+            if (expenseService == null) return;
+            
+            List<Expense> expenses = expenseService.getExpenses();
+            if (expenses == null) expenses = new ArrayList<>();
+            
+            double total = 0;
+            Map<String, Double> categoryTotals = new HashMap<>();
+            
+            for (Expense expense : expenses) {
+                total += expense.amount;
+                
+                String category = expense.category;
+                if (category == null || category.trim().isEmpty()) {
+                    category = "Others";
+                }
+                categoryTotals.put(category, categoryTotals.getOrDefault(category, 0.0) + expense.amount);
+            }
 
-        tvTotalExpenses.setText(String.format(Locale.getDefault(), "$%.2f", total));
-        tvTransactionCount.setText(expenses.size() + " transactions");
+            if (tvTotalExpenses != null) {
+                tvTotalExpenses.setText(String.format(Locale.getDefault(), "$%.2f", total));
+            }
+            if (tvTransactionCount != null) {
+                tvTransactionCount.setText(expenses.size() + " transactions");
+            }
 
-        // Weekly chart (last 7 days)
-        updateWeeklyChart(expenses);
+            if (weeklyChart != null) {
+                updateWeeklyChart(expenses);
+            }
 
-        // Create category breakdown list
-        allBreakdowns = new ArrayList<>();
-        for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
-            double percentage = total > 0 ? (entry.getValue() / total) * 100 : 0;
-            allBreakdowns.add(new CategoryBreakdownAdapter.CategoryBreakdown(entry.getKey(), entry.getValue(), percentage));
-        }
+            allBreakdowns = new ArrayList<>();
+            for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
+                double percentage = total > 0 ? (entry.getValue() / total) * 100 : 0;
+                String categoryName = entry.getKey() != null ? entry.getKey() : "Others";
+                allBreakdowns.add(new CategoryBreakdownAdapter.CategoryBreakdown(categoryName, entry.getValue(), percentage));
+            }
 
-        // Filter breakdowns based on search query
-        List<CategoryBreakdownAdapter.CategoryBreakdown> filteredBreakdowns = filterBreakdowns(allBreakdowns);
-        
-        // Sort breakdowns
-        List<CategoryBreakdownAdapter.CategoryBreakdown> sortedBreakdowns = sortBreakdowns(filteredBreakdowns);
+            List<CategoryBreakdownAdapter.CategoryBreakdown> filteredBreakdowns = filterBreakdowns(allBreakdowns);
 
-        // Set up RecyclerView with adapter
-        if (adapter == null) {
-            adapter = new CategoryBreakdownAdapter(sortedBreakdowns);
-            LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
-            rvCategoryBreakdown.setLayoutManager(layoutManager);
-            rvCategoryBreakdown.setAdapter(adapter);
-        } else {
-            adapter.updateBreakdowns(sortedBreakdowns);
+            List<CategoryBreakdownAdapter.CategoryBreakdown> sortedBreakdowns = sortBreakdowns(filteredBreakdowns);
+
+            if (adapter == null) {
+                adapter = new CategoryBreakdownAdapter(sortedBreakdowns);
+                LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
+                rvCategoryBreakdown.setLayoutManager(layoutManager);
+                rvCategoryBreakdown.setAdapter(adapter);
+            } else {
+                adapter.updateBreakdowns(sortedBreakdowns);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("AnalyticsFragment", "Error loading analytics", e);
+            if (getContext() != null) {
+                android.widget.Toast.makeText(getContext(), "Error loading analytics", android.widget.Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
-    /**
-     * Updates the weekly spending chart with last 7 days of expenses.
-     * Groups expenses by day and calculates totals for each day.
-     * 
-     * @param expenses List of all expenses
-     */
-    private void updateWeeklyChart(List<DataManager.Expense> expenses) {
+    private void updateWeeklyChart(List<Expense> expenses) {
         if (weeklyChart == null) return;
 
-        // Build last 7 days buckets (including today), oldest -> newest
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -159,7 +177,6 @@ public class AnalyticsFragment extends Fragment {
         List<String> labels = new ArrayList<>();
         List<Double> totals = new ArrayList<>();
 
-        // Prepare 7 days
         for (int i = 6; i >= 0; i--) {
             Calendar day = (Calendar) cal.clone();
             day.setTimeInMillis(todayStart);
@@ -169,8 +186,7 @@ public class AnalyticsFragment extends Fragment {
             totals.add(0.0);
         }
 
-        // Sum expenses into buckets
-        for (DataManager.Expense expense : expenses) {
+        for (Expense expense : expenses) {
             Date d = parseExpenseDate(expense.date);
             if (d == null) continue;
 
@@ -182,23 +198,21 @@ public class AnalyticsFragment extends Fragment {
             expCal.set(Calendar.MILLISECOND, 0);
 
             long expDay = expCal.getTimeInMillis();
-            long diffDays = (todayStart - expDay) / (24L * 60L * 60L * 1000L);
+            
+            long diffMillis = todayStart - expDay;
+            int diffDays = (int) Math.round(diffMillis / (24.0 * 60.0 * 60.0 * 1000.0));
+            
             if (diffDays < 0 || diffDays > 6) continue;
 
-            int index = (int) (6 - diffDays);
-            totals.set(index, totals.get(index) + expense.amount);
+            int index = 6 - diffDays;
+            if (index >= 0 && index < totals.size()) {
+                totals.set(index, totals.get(index) + expense.amount);
+            }
         }
 
         weeklyChart.setData(labels, totals);
     }
 
-    /**
-     * Parses expense date string into Date object.
-     * Supports multiple date formats and "Today" keyword.
-     * 
-     * @param dateStr Date string to parse
-     * @return Parsed Date object, or current date if parsing fails
-     */
     private Date parseExpenseDate(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty() || dateStr.equals("Today")) {
             return new Date();
@@ -219,13 +233,6 @@ public class AnalyticsFragment extends Fragment {
         return null;
     }
 
-    /**
-     * Filters category breakdowns based on search query.
-     * Searches in category name, amount, and percentage.
-     * 
-     * @param breakdowns List of breakdowns to filter
-     * @return Filtered list matching search query
-     */
     private List<CategoryBreakdownAdapter.CategoryBreakdown> filterBreakdowns(List<CategoryBreakdownAdapter.CategoryBreakdown> breakdowns) {
         if (searchQuery.isEmpty()) {
             return new ArrayList<>(breakdowns);
@@ -233,7 +240,7 @@ public class AnalyticsFragment extends Fragment {
 
         List<CategoryBreakdownAdapter.CategoryBreakdown> filtered = new ArrayList<>();
         for (CategoryBreakdownAdapter.CategoryBreakdown breakdown : breakdowns) {
-            // Search in category name, amount, and percentage
+            
             if (breakdown.category != null && breakdown.category.toLowerCase().contains(searchQuery)) {
                 filtered.add(breakdown);
             } else if (String.format(Locale.getDefault(), "%.2f", breakdown.amount).contains(searchQuery)) {
@@ -245,22 +252,15 @@ public class AnalyticsFragment extends Fragment {
         return filtered;
     }
 
-    /**
-     * Sorts category breakdowns based on current sort type.
-     * Supports sorting by amount, category name, or percentage (ascending/descending).
-     * 
-     * @param breakdowns List of breakdowns to sort
-     * @return Sorted list
-     */
     private List<CategoryBreakdownAdapter.CategoryBreakdown> sortBreakdowns(List<CategoryBreakdownAdapter.CategoryBreakdown> breakdowns) {
         List<CategoryBreakdownAdapter.CategoryBreakdown> sorted = new ArrayList<>(breakdowns);
         
         switch (currentSortType) {
             case "amount_desc":
-                Collections.sort(sorted, (a, b) -> Double.compare(b.amount, a.amount)); // Highest first
+                Collections.sort(sorted, (a, b) -> Double.compare(b.amount, a.amount)); 
                 break;
             case "amount_asc":
-                Collections.sort(sorted, (a, b) -> Double.compare(a.amount, b.amount)); // Lowest first
+                Collections.sort(sorted, (a, b) -> Double.compare(a.amount, b.amount)); 
                 break;
             case "name_asc":
                 Collections.sort(sorted, (a, b) -> {
@@ -277,20 +277,16 @@ public class AnalyticsFragment extends Fragment {
                 });
                 break;
             case "percentage_desc":
-                Collections.sort(sorted, (a, b) -> Double.compare(b.percentage, a.percentage)); // Highest first
+                Collections.sort(sorted, (a, b) -> Double.compare(b.percentage, a.percentage)); 
                 break;
             case "percentage_asc":
-                Collections.sort(sorted, (a, b) -> Double.compare(a.percentage, b.percentage)); // Lowest first
+                Collections.sort(sorted, (a, b) -> Double.compare(a.percentage, b.percentage)); 
                 break;
         }
         
         return sorted;
     }
 
-    /**
-     * Shows popup menu with sort options.
-     * Updates sort type and reloads data when option selected.
-     */
     private void showSortMenu() {
         PopupMenu popupMenu = new PopupMenu(requireContext(), btnSort);
         popupMenu.getMenu().add("Amount (High to Low)");
@@ -328,6 +324,7 @@ public class AnalyticsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        
         loadAnalytics();
     }
 }

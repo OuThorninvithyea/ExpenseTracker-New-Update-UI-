@@ -1,4 +1,10 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.main;
+
+import com.example.myapplication.R;
+import com.example.myapplication.R;
+import com.example.myapplication.data.repositories.AuthRepository;
+import com.example.myapplication.services.ExpenseService;
+import com.example.myapplication.models.User;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -17,21 +23,12 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
-/**
- * SettingsFragment - App settings and user profile management.
- * 
- * Features:
- * - Display current username and initial
- * - Edit profile (username and password)
- * - Dark mode toggle
- * - Clear all expenses option
- * - User logout (if login system is enabled)
- */
 public class SettingsFragment extends Fragment {
     private TextView tvUsername, tvUserInitial;
     private MaterialButton btnLogout, btnClearData, btnEditProfile;
     private SwitchMaterial switchDarkMode;
-    private DataManager dataManager;
+    private AuthRepository authRepository;
+    private ExpenseService expenseService;
     private SharedPreferences prefs;
     private static final String PREFS_NAME = "AppSettings";
     private static final String KEY_DARK_MODE = "dark_mode";
@@ -46,7 +43,8 @@ public class SettingsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        dataManager = DataManager.getInstance(requireContext());
+        authRepository = new AuthRepository(requireContext());
+        expenseService = new ExpenseService(requireContext());
         prefs = requireContext().getSharedPreferences(PREFS_NAME, 0);
         
         tvUsername = view.findViewById(R.id.tvUsername);
@@ -55,21 +53,23 @@ public class SettingsFragment extends Fragment {
         btnEditProfile = view.findViewById(R.id.btnEditProfile);
         switchDarkMode = view.findViewById(R.id.switchDarkMode);
         btnClearData = view.findViewById(R.id.btnClearData);
-        
-        // Load and set dark mode switch state
+
         loadDarkModeState();
-        
-        // Set switch listener
+
         switchDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             toggleDarkMode(isChecked);
         });
 
-        DatabaseHelper.User user = dataManager.getCurrentUser();
+        User user = authRepository.getCurrentUser();
         if (user != null) {
             tvUsername.setText("@" + user.username);
-            tvUserInitial.setText(user.username.substring(0, 1).toUpperCase());
-            
-            // Show logout button only if user is not Guest
+
+            if (user.username != null && !user.username.isEmpty()) {
+                tvUserInitial.setText(user.username.substring(0, 1).toUpperCase());
+            } else {
+                tvUserInitial.setText("U");
+            }
+
             if (!user.username.equals("Guest")) {
                 btnLogout.setVisibility(View.VISIBLE);
                 btnLogout.setOnClickListener(v -> {
@@ -77,11 +77,10 @@ public class SettingsFragment extends Fragment {
                         .setTitle("Log Out")
                         .setMessage("Are you sure you want to log out?")
                         .setPositiveButton("Log Out", (dialog, which) -> {
-                            // Logout user
-                            dataManager.logout();
-                            Toast.makeText(requireContext(), "Logged out successfully", Toast.LENGTH_SHORT).show();
                             
-                            // Navigate to login screen
+                            authRepository.logout();
+                            Toast.makeText(requireContext(), "Logged out successfully", Toast.LENGTH_SHORT).show();
+
                             if (getActivity() instanceof MainActivity) {
                                 ((MainActivity) getActivity()).showLoginScreen();
                             }
@@ -90,38 +89,35 @@ public class SettingsFragment extends Fragment {
                         .show();
                 });
             } else {
-                // Hide logout button for Guest users
+                
                 btnLogout.setVisibility(View.GONE);
             }
         }
 
-        btnEditProfile.setOnClickListener(v -> {
-            showEditProfileDialog();
-        });
-
         btnClearData.setOnClickListener(v -> {
             new AlertDialog.Builder(requireContext())
-                .setTitle("Clear Data")
-                .setMessage("Clear all expenses? This cannot be undone.")
-                .setPositiveButton("Clear", (dialog, which) -> {
-                    if (dataManager.clearExpenses()) {
-                        Toast.makeText(requireContext(), "All expenses cleared", Toast.LENGTH_SHORT).show();
+                .setTitle("Clear All Data")
+                .setMessage("Are you sure you want to delete all expenses? This cannot be undone.")
+                .setPositiveButton("Delete All", (dialog, which) -> {
+                    boolean success = expenseService.clearExpenses();
+                    if (success) {
+                        Toast.makeText(requireContext(), "All expenses deleted", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(), "Failed to delete expenses", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
         });
+
+        btnEditProfile.setOnClickListener(v -> showEditProfileDialog());
     }
 
-    /**
-     * Loads dark mode preference from SharedPreferences and updates switch state.
-     */
     private void loadDarkModeState() {
-        // Read from SharedPreferences to get the saved preference
+        
         int savedMode = prefs.getInt(KEY_DARK_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         boolean isDarkMode = (savedMode == AppCompatDelegate.MODE_NIGHT_YES);
-        
-        // Set switch state without triggering listener
+
         switchDarkMode.setOnCheckedChangeListener(null);
         switchDarkMode.setChecked(isDarkMode);
         switchDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -129,33 +125,20 @@ public class SettingsFragment extends Fragment {
         });
     }
 
-    /**
-     * Toggles dark mode on/off and saves preference.
-     * Recreates activity to apply theme changes immediately.
-     * 
-     * @param enable true to enable dark mode, false to disable
-     */
     private void toggleDarkMode(boolean enable) {
         int newMode = enable ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
-        
-        // Save preference
+
         prefs.edit().putInt(KEY_DARK_MODE, newMode).apply();
-        
-        // Apply the new mode
+
         AppCompatDelegate.setDefaultNightMode(newMode);
-        
-        // Recreate activity to apply theme changes immediately
+
         if (getActivity() != null) {
             getActivity().recreate();
         }
     }
-    
-    /**
-     * Shows dialog to edit user profile (username and password).
-     * Validates inputs and updates database on save.
-     */
+
     private void showEditProfileDialog() {
-        DatabaseHelper.User user = dataManager.getCurrentUser();
+        User user = authRepository.getCurrentUser();
         if (user == null) {
             Toast.makeText(requireContext(), "User not found", Toast.LENGTH_SHORT).show();
             return;
@@ -169,7 +152,6 @@ public class SettingsFragment extends Fragment {
         MaterialButton btnSave = dialogView.findViewById(R.id.btnSave);
         MaterialButton btnCancel = dialogView.findViewById(R.id.btnCancel);
 
-        // Pre-fill current username
         etNewUsername.setText(user.username);
 
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
@@ -185,7 +167,6 @@ public class SettingsFragment extends Fragment {
 
             tvError.setVisibility(View.GONE);
 
-            // Validate username
             if (newUsername.isEmpty()) {
                 tvError.setText("Username cannot be empty");
                 tvError.setVisibility(View.VISIBLE);
@@ -195,36 +176,36 @@ public class SettingsFragment extends Fragment {
             boolean usernameChanged = !newUsername.equals(user.username);
             boolean passwordChanged = !newPassword.isEmpty();
 
-            // If password is being changed, current password is required
             if (passwordChanged && currentPassword.isEmpty()) {
                 tvError.setText("Current password is required to change password");
                 tvError.setVisibility(View.VISIBLE);
                 return;
             }
 
-            // If password is being changed, validate new password length
             if (passwordChanged && newPassword.length() < 3) {
                 tvError.setText("New password must be at least 3 characters");
                 tvError.setVisibility(View.VISIBLE);
                 return;
             }
 
-            // Update username if changed
             if (usernameChanged) {
-                if (!dataManager.updateUsername(newUsername)) {
+                if (!authRepository.updateUsername(newUsername)) {
                     tvError.setText("Username already exists or update failed");
                     tvError.setVisibility(View.VISIBLE);
                     return;
                 }
-                // Update UI
+                
                 tvUsername.setText("@" + newUsername);
-                tvUserInitial.setText(newUsername.substring(0, 1).toUpperCase());
+                if (!newUsername.isEmpty()) {
+                    tvUserInitial.setText(newUsername.substring(0, 1).toUpperCase());
+                } else {
+                    tvUserInitial.setText("U");
+                }
                 Toast.makeText(requireContext(), "Username updated successfully", Toast.LENGTH_SHORT).show();
             }
 
-            // Update password if changed
             if (passwordChanged) {
-                if (!dataManager.updatePassword(currentPassword, newPassword)) {
+                if (!authRepository.updatePassword(currentPassword, newPassword)) {
                     tvError.setText("Current password is incorrect or update failed");
                     tvError.setVisibility(View.VISIBLE);
                     return;
@@ -244,17 +225,57 @@ public class SettingsFragment extends Fragment {
         dialog.show();
     }
 
+    private int getMaterialColor(String attrName) {
+        if (getContext() == null) return 0xFF000000;
+        int attrId = getContext().getResources().getIdentifier(attrName, "attr", getContext().getPackageName());
+        if (attrId == 0) {
+            attrId = getContext().getResources().getIdentifier(attrName, "attr", "com.google.android.material");
+        }
+        if (attrId != 0) {
+            return getThemeColor(attrId);
+        }
+        switch (attrName) {
+            case "colorSurface":
+                return getThemeColor(android.R.attr.colorBackground);
+            case "colorPrimary":
+                return getThemeColor(android.R.attr.colorPrimary);
+            case "colorOnSurfaceVariant":
+                return getThemeColor(android.R.attr.textColorSecondary);
+            case "colorPrimaryContainer":
+                return getThemeColor(android.R.attr.colorPrimary);
+            default:
+                return 0xFF000000;
+        }
+    }
+
+    private int getThemeColor(int attr) {
+        if (getContext() == null) return 0xFF000000;
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        if (getContext().getTheme().resolveAttribute(attr, typedValue, true)) {
+            if (typedValue.type >= android.util.TypedValue.TYPE_FIRST_COLOR_INT &&
+                typedValue.type <= android.util.TypedValue.TYPE_LAST_COLOR_INT) {
+                return typedValue.data;
+            } else if (typedValue.resourceId != 0) {
+                return androidx.core.content.ContextCompat.getColor(getContext(), typedValue.resourceId);
+            }
+        }
+        return 0xFF000000;
+    }
+
     @Override
     public void onResume() {
         super.onResume();
-        // Update switch state when fragment resumes (in case dark mode was changed elsewhere)
-        loadDarkModeState();
         
-        // Refresh user info in case it was updated
-        DatabaseHelper.User user = dataManager.getCurrentUser();
+        loadDarkModeState();
+
+        User user = authRepository.getCurrentUser();
         if (user != null) {
             tvUsername.setText("@" + user.username);
-            tvUserInitial.setText(user.username.substring(0, 1).toUpperCase());
+            if (user.username != null && !user.username.isEmpty()) {
+                tvUserInitial.setText(user.username.substring(0, 1).toUpperCase());
+            } else {
+                tvUserInitial.setText("U");
+            }
         }
     }
 }

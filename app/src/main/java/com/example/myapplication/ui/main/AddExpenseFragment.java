@@ -1,4 +1,9 @@
-package com.example.myapplication;
+package com.example.myapplication.ui.main;
+
+import com.example.myapplication.R;
+import com.example.myapplication.R;
+import com.example.myapplication.services.ExpenseService;
+import com.example.myapplication.models.BudgetCheckResult;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -22,32 +27,19 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
-/**
- * AddExpenseFragment - Screen for adding new expenses.
- * 
- * Features:
- * - Category selection with predefined categories and custom "Others" option
- * - Amount input with validation
- * - Optional note field
- * - Date picker for expense date
- * - Budget checking before saving
- * - Navigation back to home after saving
- */
 public class AddExpenseFragment extends Fragment {
-    // UI Components
+    
     private TextInputEditText etAmount, etNote, etDate, etCustomCategory;
     private com.google.android.material.textfield.TextInputLayout tilCustomCategory;
     private MaterialButton btnSave;
     private GridLayout gridCategories;
     private android.widget.ImageButton btnBack;
-    
-    // State variables
-    private String selectedCategory = "Food";              // Currently selected category
-    private String customCategoryName = "";                // Custom category name if "Others" selected
-    private TextView othersCategoryLabel;                   // Reference to "Others" category label
-    private DataManager dataManager;
-    
-    // Category data
+
+    private String selectedCategory = "Food";              
+    private String customCategoryName = "";                
+    private TextView othersCategoryLabel;                   
+    private ExpenseService expenseService;
+
     private final String[] categories = {"Food", "Transport", "Shopping", "Bills", "Entertainment", "Others"};
     private final String[] categoryIcons = {"🍔", "🚗", "🛍️", "📜", "🍿", "✨"};
 
@@ -61,7 +53,8 @@ public class AddExpenseFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        dataManager = DataManager.getInstance(requireContext());
+        expenseService = new ExpenseService(requireContext());
+
         etAmount = view.findViewById(R.id.etAmount);
         etNote = view.findViewById(R.id.etNote);
         etDate = view.findViewById(R.id.etDate);
@@ -72,29 +65,31 @@ public class AddExpenseFragment extends Fragment {
         btnBack = view.findViewById(R.id.btnBack);
 
         btnBack.setOnClickListener(v -> {
+            
             if (getParentFragmentManager().getBackStackEntryCount() > 0) {
+                
                 getParentFragmentManager().popBackStack();
             } else if (getActivity() instanceof MainActivity) {
+                
                 ((MainActivity) getActivity()).bottomNavigation.setSelectedItemId(R.id.nav_home);
             } else if (getActivity() != null) {
+                
                 getActivity().onBackPressed();
             }
         });
 
-        // Set default date
         SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
         etDate.setText(sdf.format(new Date()));
 
-        // Set up date picker
         etDate.setOnClickListener(v -> showDatePicker());
 
-        // Listen for custom category input changes
         etCustomCategory.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                
                 customCategoryName = s.toString().trim();
             }
 
@@ -102,18 +97,11 @@ public class AddExpenseFragment extends Fragment {
             public void afterTextChanged(android.text.Editable s) {}
         });
 
-        // Setup category selection grid
         setupCategoryGrid();
-        
-        // Setup save button click listener
+
         btnSave.setOnClickListener(v -> saveExpense());
     }
 
-    /**
-     * Creates and sets up the category selection grid.
-     * Each category is displayed as a card with icon and label.
-     * Selecting "Others" shows a text input for custom category name.
-     */
     private void setupCategoryGrid() {
         for (int i = 0; i < categories.length; i++) {
             MaterialCardView card = new MaterialCardView(requireContext());
@@ -137,11 +125,10 @@ public class AddExpenseFragment extends Fragment {
             tvLabel.setTextSize(10);
             tvLabel.setGravity(android.view.Gravity.CENTER);
             tvLabel.setPadding(8, 0, 8, 16);
-            // Use theme-aware color for text
+            
             int textColor = getMaterialColor("colorOnSurfaceVariant");
             tvLabel.setTextColor(textColor);
 
-            // Store reference to "Others" category label
             if (categories[i].equals("Others")) {
                 othersCategoryLabel = tvLabel;
             }
@@ -156,17 +143,17 @@ public class AddExpenseFragment extends Fragment {
             card.setOnClickListener(v -> {
                 if (category.equals("Others")) {
                     selectedCategory = "Others";
-                    // Show the custom category input field
+                    
                     tilCustomCategory.setVisibility(View.VISIBLE);
                     etCustomCategory.requestFocus();
                     updateCategorySelection();
                 } else {
                     selectedCategory = category;
-                    customCategoryName = ""; // Clear custom category when selecting a predefined one
-                    // Hide the custom category input field
+                    customCategoryName = ""; 
+                    
                     tilCustomCategory.setVisibility(View.GONE);
                     etCustomCategory.setText("");
-                    // Reset "Others" label if it was showing custom name
+                    
                     if (othersCategoryLabel != null) {
                         othersCategoryLabel.setText("Others");
                     }
@@ -179,85 +166,122 @@ public class AddExpenseFragment extends Fragment {
         updateCategorySelection();
     }
 
-    /**
-     * Updates the visual appearance of category cards based on selection.
-     * Highlights selected category and updates "Others" label if custom name is entered.
-     */
     private void updateCategorySelection() {
-        // Get theme-aware colors using Material3 attributes
-        int surfaceColor = getMaterialColor("colorSurface");
-        int primaryColor = getMaterialColor("colorPrimary");
-        int onSurfaceVariantColor = getMaterialColor("colorOnSurfaceVariant");
-        int primaryContainerColor = getMaterialColor("colorPrimaryContainer");
-        
-        for (int i = 0; i < gridCategories.getChildCount(); i++) {
-            MaterialCardView card = (MaterialCardView) gridCategories.getChildAt(i);
-            android.widget.LinearLayout layout = (android.widget.LinearLayout) card.getChildAt(0);
-            TextView tvLabel = (TextView) layout.getChildAt(1);
+        try {
+            if (gridCategories == null) return;
+
+            int surfaceColor = getMaterialColor("colorSurface");
+            int primaryColor = getMaterialColor("colorPrimary");
+            int onSurfaceVariantColor = getMaterialColor("colorOnSurfaceVariant");
+            int primaryContainerColor = getMaterialColor("colorPrimaryContainer");
             
-            // Check if this is the "Others" category
-            boolean isOthersCategory = (tvLabel == othersCategoryLabel);
-            
-            // Update "Others" label if custom name is set and it's selected
-            if (isOthersCategory) {
-                if (selectedCategory.equals("Others") && !customCategoryName.isEmpty()) {
-                    tvLabel.setText(customCategoryName);
+            for (int i = 0; i < gridCategories.getChildCount(); i++) {
+                View child = gridCategories.getChildAt(i);
+                if (!(child instanceof MaterialCardView)) continue;
+                
+                MaterialCardView card = (MaterialCardView) child;
+                if (card.getChildCount() == 0) continue;
+                
+                View grandChild = card.getChildAt(0);
+                if (!(grandChild instanceof android.widget.LinearLayout)) continue;
+                
+                android.widget.LinearLayout layout = (android.widget.LinearLayout) grandChild;
+                if (layout.getChildCount() < 2) continue;
+                
+                View labelView = layout.getChildAt(1);
+                if (!(labelView instanceof TextView)) continue;
+                
+                TextView tvLabel = (TextView) labelView;
+
+                boolean isOthersCategory = (tvLabel == othersCategoryLabel);
+
+                if (isOthersCategory) {
+                    if ("Others".equals(selectedCategory) && !customCategoryName.isEmpty()) {
+                        tvLabel.setText(customCategoryName);
+                    } else {
+                        tvLabel.setText("Others");
+                    }
+                }
+
+                boolean isSelected = false;
+                if (isOthersCategory) {
+                    isSelected = "Others".equals(selectedCategory);
                 } else {
-                    tvLabel.setText("Others");
+                    
+                    if (categories != null && i < categories.length) {
+                        String originalCategoryName = categories[i];
+                        isSelected = originalCategoryName.equals(selectedCategory);
+                    }
+                }
+                
+                if (isSelected) {
+                    
+                    card.setCardBackgroundColor(primaryContainerColor);
+                    card.setStrokeWidth(4);
+                    card.setStrokeColor(primaryColor);
+                    tvLabel.setTextColor(primaryColor);
+                } else {
+                    
+                    card.setCardBackgroundColor(surfaceColor);
+                    card.setStrokeWidth(0);
+                    tvLabel.setTextColor(onSurfaceVariantColor);
                 }
             }
-            
-            // Determine if this category is selected
-            boolean isSelected = false;
-            if (isOthersCategory) {
-                isSelected = selectedCategory.equals("Others");
-            } else {
-                // For other categories, compare with the original category name
-                String originalCategoryName = categories[i];
-                isSelected = originalCategoryName.equals(selectedCategory);
-            }
-            
-            if (isSelected) {
-                // Selected category: use primary color background with stroke
-                card.setCardBackgroundColor(primaryContainerColor);
-                card.setStrokeWidth(4);
-                card.setStrokeColor(primaryColor);
-                tvLabel.setTextColor(primaryColor);
-            } else {
-                // Unselected category: use surface color
-                card.setCardBackgroundColor(surfaceColor);
-                card.setStrokeWidth(0);
-                tvLabel.setTextColor(onSurfaceVariantColor);
-            }
+        } catch (Exception e) {
+            android.util.Log.e("AddExpenseFragment", "Error updating category selection", e);
         }
     }
-    
+
     private int getThemeColor(int attr) {
+        if (getContext() == null) return 0xFF000000;
         android.util.TypedValue typedValue = new android.util.TypedValue();
-        if (requireContext().getTheme().resolveAttribute(attr, typedValue, true)) {
-            if (typedValue.type >= android.util.TypedValue.TYPE_FIRST_COLOR_INT && 
-                typedValue.type <= android.util.TypedValue.TYPE_LAST_COLOR_INT) {
-                return typedValue.data;
-            } else {
-                return ContextCompat.getColor(requireContext(), typedValue.resourceId);
+        try {
+            
+            if (getContext().getTheme().resolveAttribute(attr, typedValue, true)) {
+                
+                if (typedValue.type >= android.util.TypedValue.TYPE_FIRST_COLOR_INT && 
+                    typedValue.type <= android.util.TypedValue.TYPE_LAST_COLOR_INT) {
+                    return typedValue.data;
+                } else if (typedValue.resourceId != 0) {
+                    
+                    return ContextCompat.getColor(getContext(), typedValue.resourceId);
+                }
             }
+        } catch (Exception e) {
+            
         }
-        // Fallback to a default color if attribute not found
-        return 0xFF000000; // Black as fallback
+        
+        return 0xFF000000; 
     }
-    
+
     private int getMaterialColor(String attrName) {
-        int attrId = requireContext().getResources().getIdentifier(
-            attrName, "attr", requireContext().getPackageName());
-        if (attrId == 0) {
-            // Try Material library package
-            attrId = requireContext().getResources().getIdentifier(
-                attrName, "attr", "com.google.android.material");
+        if (getContext() == null) return 0xFF000000;
+        
+        int attrId = 0;
+        try {
+            
+            attrId = getContext().getResources().getIdentifier(
+                attrName, "attr", getContext().getPackageName());
+            
+            if (attrId == 0) {
+                
+                attrId = getContext().getResources().getIdentifier(
+                    attrName, "attr", "com.google.android.material");
+            }
+            
+            if (attrId == 0) {
+                 
+                 attrId = getContext().getResources().getIdentifier(attrName, "attr", "android");
+            }
+        } catch (Exception e) {
+             
         }
+
         if (attrId != 0) {
+            
             return getThemeColor(attrId);
         }
-        // Fallback colors
+
         switch (attrName) {
             case "colorSurface":
                 return getThemeColor(android.R.attr.colorBackground);
@@ -272,14 +296,9 @@ public class AddExpenseFragment extends Fragment {
         }
     }
 
-    /**
-     * Shows a date picker dialog.
-     * Updates the date field with the selected date formatted as "MMMM d, yyyy".
-     */
     private void showDatePicker() {
         Calendar calendar = Calendar.getInstance();
-        
-        // Try to parse existing date if available
+
         String currentDate = etDate.getText().toString().trim();
         if (!currentDate.isEmpty()) {
             try {
@@ -289,7 +308,7 @@ public class AddExpenseFragment extends Fragment {
                     calendar.setTime(date);
                 }
             } catch (Exception e) {
-                // If parsing fails, use current date
+                
             }
         }
         
@@ -311,17 +330,7 @@ public class AddExpenseFragment extends Fragment {
         datePickerDialog.show();
     }
 
-    /**
-     * Shows an alert when adding an expense would exceed budget.
-     * Allows user to proceed anyway or cancel.
-     * 
-     * @param category Expense category
-     * @param budgetCheck Budget check result with limit and spending info
-     * @param amount Expense amount
-     * @param note Expense note
-     * @param date Expense date
-     */
-    private void showBudgetExceededAlert(String category, DataManager.BudgetCheckResult budgetCheck, double amount, String note, String date) {
+    private void showBudgetExceededAlert(String category, BudgetCheckResult budgetCheck, double amount, String note, String date) {
         String message = String.format(Locale.getDefault(),
             "Budget Limit Reached!\n\n" +
             "Category: %s\n" +
@@ -341,21 +350,20 @@ public class AddExpenseFragment extends Fragment {
             .setTitle("⚠️ Budget Limit Exceeded")
             .setMessage(message)
             .setPositiveButton("Save Anyway", (dialog, which) -> {
-                // User chose to save despite exceeding budget
-                long id = dataManager.addExpense(category, amount, note.isEmpty() ? "No note" : note, date.isEmpty() ? "Today" : date);
+                
+                long id = expenseService.addExpense(category, amount, note.isEmpty() ? "No note" : note, date.isEmpty() ? "Today" : date);
                 if (id > 0) {
                     Toast.makeText(requireContext(), "Expense saved", Toast.LENGTH_SHORT).show();
                     etAmount.setText("");
                     etNote.setText("");
                     SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
                     etDate.setText(sdf.format(new Date()));
-                    selectedCategory = "Food"; // Reset to default
-                    customCategoryName = ""; // Clear custom category
-                    etCustomCategory.setText(""); // Clear custom category input
-                    tilCustomCategory.setVisibility(View.GONE); // Hide custom category input
+                    selectedCategory = "Food"; 
+                    customCategoryName = ""; 
+                    etCustomCategory.setText(""); 
+                    tilCustomCategory.setVisibility(View.GONE); 
                     updateCategorySelection();
-                    
-                    // Navigate to home
+
                     if (getActivity() instanceof MainActivity) {
                         ((MainActivity) getActivity()).bottomNavigation.setSelectedItemId(R.id.nav_home);
                     }
@@ -368,67 +376,67 @@ public class AddExpenseFragment extends Fragment {
             .show();
     }
 
-    /**
-     * Validates input and saves the expense to database.
-     * Checks budget before saving and shows alert if budget would be exceeded.
-     * Navigates back to home screen on success.
-     */
     private void saveExpense() {
-        String amountStr = etAmount.getText().toString().trim();
-        String note = etNote.getText().toString().trim();
-        String date = etDate.getText().toString().trim();
-
-        if (amountStr.isEmpty()) {
-            Toast.makeText(requireContext(), "Please enter an amount", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Validate custom category if "Others" is selected
-        if (selectedCategory.equals("Others") && customCategoryName.isEmpty()) {
-            Toast.makeText(requireContext(), "Please enter a category name", Toast.LENGTH_SHORT).show();
-            etCustomCategory.requestFocus();
-            return;
-        }
-
         try {
+            if (etAmount == null || etNote == null || etDate == null) return;
+
+            String amountStr = etAmount.getText().toString().trim();
+            String note = etNote.getText().toString().trim();
+            String date = etDate.getText().toString().trim();
+
+            if (amountStr.isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter an amount", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if ("Others".equals(selectedCategory) && customCategoryName.isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter a category name", Toast.LENGTH_SHORT).show();
+                if (etCustomCategory != null) etCustomCategory.requestFocus();
+                return;
+            }
+
             double amount = Double.parseDouble(amountStr);
             if (amount <= 0) {
                 Toast.makeText(requireContext(), "Amount must be greater than 0", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Use custom category name if "Others" is selected, otherwise use selected category
-            String categoryToSave = selectedCategory.equals("Others") ? customCategoryName : selectedCategory;
-            
-            // Check budget before saving
-            DataManager.BudgetCheckResult budgetCheck = dataManager.checkBudget(categoryToSave, amount);
-            if (budgetCheck.exceedsBudget) {
-                showBudgetExceededAlert(categoryToSave, budgetCheck, amount, note, date);
-                return;
-            }
-            
-            long id = dataManager.addExpense(categoryToSave, amount, note.isEmpty() ? "No note" : note, date.isEmpty() ? "Today" : date);
-            if (id > 0) {
-                Toast.makeText(requireContext(), "Expense saved", Toast.LENGTH_SHORT).show();
-                etAmount.setText("");
-                etNote.setText("");
-                SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
-                etDate.setText(sdf.format(new Date()));
-                selectedCategory = "Food"; // Reset to default
-                customCategoryName = ""; // Clear custom category
-                etCustomCategory.setText(""); // Clear custom category input
-                tilCustomCategory.setVisibility(View.GONE); // Hide custom category input
-                updateCategorySelection();
-                
-                // Navigate to home
-                if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).bottomNavigation.setSelectedItemId(R.id.nav_home);
+            String categoryToSave = "Others".equals(selectedCategory) ? customCategoryName : selectedCategory;
+
+            if (expenseService != null) {
+                BudgetCheckResult budgetCheck = expenseService.checkBudget(categoryToSave, amount);
+                if (budgetCheck.exceedsBudget) {
+                    showBudgetExceededAlert(categoryToSave, budgetCheck, amount, note, date);
+                    return;
                 }
-            } else {
-                Toast.makeText(requireContext(), "Failed to save expense", Toast.LENGTH_SHORT).show();
+                
+                long id = expenseService.addExpense(categoryToSave, amount, note.isEmpty() ? "No note" : note, date.isEmpty() ? "Today" : date);
+                if (id > 0) {
+                    Toast.makeText(requireContext(), "Expense saved", Toast.LENGTH_SHORT).show();
+                    etAmount.setText("");
+                    etNote.setText("");
+                    SimpleDateFormat sdf = new SimpleDateFormat("MMMM d, yyyy", Locale.getDefault());
+                    etDate.setText(sdf.format(new Date()));
+                    selectedCategory = "Food"; 
+                    customCategoryName = ""; 
+                    if (etCustomCategory != null) etCustomCategory.setText(""); 
+                    if (tilCustomCategory != null) tilCustomCategory.setVisibility(View.GONE); 
+                    updateCategorySelection();
+
+                    if (getActivity() instanceof MainActivity) {
+                        ((MainActivity) getActivity()).bottomNavigation.setSelectedItemId(R.id.nav_home);
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Failed to save expense", Toast.LENGTH_SHORT).show();
+                }
             }
         } catch (NumberFormatException e) {
             Toast.makeText(requireContext(), "Invalid amount", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            android.util.Log.e("AddExpenseFragment", "Error saving expense", e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Error saving expense", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }
