@@ -157,7 +157,8 @@ public class BudgetFragment extends Fragment {
         TextView[] othersCategoryLabel = {null};
 
         if (existingBudget != null) {
-            etAmount.setText(String.format(Locale.getDefault(), "%.2f", existingBudget.limit));
+            double displayAmount = CurrencyHelper.convertUsdToSelected(requireContext(), existingBudget.limit);
+            etAmount.setText(String.format(Locale.getDefault(), "%.2f", displayAmount));
         }
 
         for (int i = 0; i < categories.length; i++) {
@@ -287,11 +288,14 @@ public class BudgetFragment extends Fragment {
                 }
 
                 try {
-                    double amount = Double.parseDouble(amountStr);
-                    if (amount <= 0) {
+                    double inputAmount = Double.parseDouble(amountStr);
+                    if (inputAmount <= 0) {
                         Toast.makeText(requireContext(), "Budget amount must be greater than 0", Toast.LENGTH_SHORT).show();
                         return;
                     }
+
+                    // Convert from selected currency to USD for storage
+                    double amount = CurrencyHelper.convertSelectedToUsd(requireContext(), inputAmount);
 
                     if (selectedCategory[0].equals("Others") && customCategoryName[0].isEmpty()) {
                         Toast.makeText(requireContext(), "Please enter a category name", Toast.LENGTH_SHORT).show();

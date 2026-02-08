@@ -16,28 +16,29 @@ import java.security.NoSuchAlgorithmException;
 public class DatabaseHelper extends SQLiteOpenHelper {
     
     private static final String DATABASE_NAME = "expense_tracker.db";
-    private static final int DATABASE_VERSION = 3; 
+    private static final int DATABASE_VERSION = 4; // Bumped to 4 for profile_picture
 
     private static final String TABLE_USERS = "users";
-    private static final String COL_USER_ID = "id";                    
-    private static final String COL_USERNAME = "username";              
-    private static final String COL_PASSWORD_HASH = "password_hash";    
-    private static final String COL_PET_HASH = "pet_hash";             
+    private static final String COL_USER_ID = "id";
+    private static final String COL_USERNAME = "username";
+    private static final String COL_PASSWORD_HASH = "password_hash";
+    private static final String COL_PET_HASH = "pet_hash";
+    private static final String COL_PROFILE_PICTURE = "profile_picture"; // New column
 
     private static final String TABLE_EXPENSES = "expenses";
-    private static final String COL_EXPENSE_ID = "id";                  
-    private static final String COL_EXPENSE_USER_ID = "user_id";       
-    private static final String COL_EXPENSE_CATEGORY = "category";      
-    private static final String COL_EXPENSE_AMOUNT = "amount";          
-    private static final String COL_EXPENSE_NOTE = "note";              
-    private static final String COL_EXPENSE_DATE = "date";              
+    private static final String COL_EXPENSE_ID = "id";
+    private static final String COL_EXPENSE_USER_ID = "user_id";
+    private static final String COL_EXPENSE_CATEGORY = "category";
+    private static final String COL_EXPENSE_AMOUNT = "amount";
+    private static final String COL_EXPENSE_NOTE = "note";
+    private static final String COL_EXPENSE_DATE = "date";
 
     private static final String TABLE_BUDGETS = "budgets";
-    private static final String COL_BUDGET_USER_ID = "user_id";        
-    private static final String COL_BUDGET_CATEGORY = "category";       
-    private static final String COL_BUDGET_LIMIT = "limit_amount";    
+    private static final String COL_BUDGET_USER_ID = "user_id";
+    private static final String COL_BUDGET_CATEGORY = "category";
+    private static final String COL_BUDGET_LIMIT = "limit_amount";
 
-    private Context context; 
+    private Context context;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -54,7 +55,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     COL_USER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     COL_USERNAME + " TEXT UNIQUE NOT NULL, " +
                     COL_PASSWORD_HASH + " TEXT NOT NULL, " +
-                    COL_PET_HASH + " TEXT NOT NULL)";
+                    COL_PET_HASH + " TEXT NOT NULL, " +
+                    COL_PROFILE_PICTURE + " TEXT)"; // Added column
             db.execSQL(createUsersTable);
             Log.d("DatabaseHelper", "Users table created");
 
@@ -88,7 +90,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onOpen(SQLiteDatabase db) {
         super.onOpen(db);
-
         db.execSQL("PRAGMA foreign_keys = ON");
     }
 
@@ -96,10 +97,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.d("DatabaseHelper", "Upgrading database from version " + oldVersion + " to " + newVersion);
 
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_BUDGETS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_EXPENSES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
-        onCreate(db);
+        if (oldVersion < 4) {
+            // Upgrade to version 4: Add profile_picture column
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN " + COL_PROFILE_PICTURE + " TEXT");
+                Log.d("DatabaseHelper", "Added profile_picture column to users table");
+            } catch (Exception e) {
+                Log.e("DatabaseHelper", "Error adding profile_picture column: " + e.getMessage());
+                // If it fails (e.g., column already exists in dev), we might ignore or recreate
+            }
+        } else {
+            // Fallback for other versions (simple recreation for dev environment if needed, but strive for migration)
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_BUDGETS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_EXPENSES);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
+            onCreate(db);
+        }
         Log.d("DatabaseHelper", "Database upgrade completed");
     }
 
@@ -246,6 +259,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             values.put(COL_USERNAME, username);
             values.put(COL_PASSWORD_HASH, passwordHash);
             values.put(COL_PET_HASH, petHash);
+            values.put(COL_PROFILE_PICTURE, (String) null);
 
             long id = db.insertOrThrow(TABLE_USERS, null, values);
             return id > 0 ? id : -7;
@@ -289,6 +303,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             values.put(COL_USERNAME, "Guest");
             values.put(COL_PASSWORD_HASH, passwordHash);
             values.put(COL_PET_HASH, petHash);
+            values.put(COL_PROFILE_PICTURE, (String) null);
 
             long id = db.insert(TABLE_USERS, null, values);
             return id > 0 ? (int) id : -1;
@@ -341,7 +356,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Log.d("DatabaseHelper", "Password hash generated (length: " + passwordHash.length() + ")");
 
             Cursor userCheck = db.query(TABLE_USERS, 
-                    new String[]{COL_USER_ID, COL_USERNAME, COL_PASSWORD_HASH}, 
+                    new String[]{COL_USER_ID, COL_USERNAME, COL_PASSWORD_HASH, COL_PROFILE_PICTURE}, 
                     COL_USERNAME + "=?", 
                     new String[]{trimmedUsername}, 
                     null, null, null);
@@ -357,7 +372,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
                 if (storedPasswordHash != null && storedPasswordHash.equals(passwordHash)) {
                     Log.d("DatabaseHelper", "Password hash matches! Login successful.");
-                    User user = new User(userId, storedUsername);
+                    String profilePicture = null;
+                    if (userCheck.getColumnIndex(COL_PROFILE_PICTURE) != -1) {
+                         profilePicture = userCheck.getString(userCheck.getColumnIndexOrThrow(COL_PROFILE_PICTURE));
+                    }
+                    User user = new User(userId, storedUsername, profilePicture);
                     userCheck.close();
                     return user;
                 } else {
@@ -394,13 +413,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try {
             SQLiteDatabase db = this.getReadableDatabase();
             cursor = db.query(TABLE_USERS, 
-                    new String[]{COL_USER_ID, COL_USERNAME}, 
+                    new String[]{COL_USER_ID, COL_USERNAME, COL_PROFILE_PICTURE}, 
                     COL_USER_ID + "=?", 
                     new String[]{String.valueOf(id)}, 
                     null, null, null);
             
             if (cursor != null && cursor.moveToFirst()) {
-                User user = new User(cursor.getInt(0), cursor.getString(1));
+                int idIndex = cursor.getColumnIndexOrThrow(COL_USER_ID);
+                int nameIndex = cursor.getColumnIndexOrThrow(COL_USERNAME);
+                int picIndex = cursor.getColumnIndex(COL_PROFILE_PICTURE);
+                
+                String profilePic = picIndex != -1 ? cursor.getString(picIndex) : null;
+                
+                User user = new User(cursor.getInt(idIndex), cursor.getString(nameIndex), profilePic);
                 return user;
             }
             return null;
@@ -564,6 +589,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             if (cursor != null) cursor.close();
             return false;
         }
+    }
+
+    public boolean updateProfilePicture(int userId, String path) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_PROFILE_PICTURE, path);
+        
+        int rows = db.update(TABLE_USERS, values, COL_USER_ID + "=? ", 
+                new String[]{String.valueOf(userId)});
+        return rows > 0;
     }
 
     public long addExpense(int userId, String category, double amount, String note, String date) {

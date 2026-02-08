@@ -120,4 +120,10 @@ public class AuthRepository {
     public boolean resetPassword(String username, String pet, String newPassword) {
         return dbHelper.resetPassword(username, pet, newPassword);
     }
+
+    public boolean updateProfilePicture(String path) {
+        int userId = prefs.getInt("userId", -1);
+        if (userId <= 0) return false;
+        return dbHelper.updateProfilePicture(userId, path);
+    }
 }

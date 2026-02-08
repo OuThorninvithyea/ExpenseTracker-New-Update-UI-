@@ -401,11 +401,14 @@ public class AddExpenseFragment extends Fragment {
                 return;
             }
 
-            double amount = Double.parseDouble(amountStr);
-            if (amount <= 0) {
+            double inputAmount = Double.parseDouble(amountStr);
+            if (inputAmount <= 0) {
                 Toast.makeText(requireContext(), "Amount must be greater than 0", Toast.LENGTH_SHORT).show();
                 return;
             }
+
+            // Convert from selected currency to USD for storage
+            double amount = CurrencyHelper.convertSelectedToUsd(requireContext(), inputAmount);
 
             String categoryToSave = "Others".equals(selectedCategory) ? customCategoryName : selectedCategory;
 

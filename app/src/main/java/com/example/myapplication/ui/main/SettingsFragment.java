@@ -6,6 +6,15 @@ import com.example.myapplication.data.repositories.AuthRepository;
 import com.example.myapplication.services.ExpenseService;
 import com.example.myapplication.models.User;
 import com.example.myapplication.utils.CurrencyHelper;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+import com.bumptech.glide.Glide;
+import com.google.android.material.imageview.ShapeableImageView;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -33,6 +42,44 @@ public class SettingsFragment extends Fragment {
     private SharedPreferences prefs;
     private static final String PREFS_NAME = "AppSettings";
     private static final String KEY_DARK_MODE = "dark_mode";
+    
+    // START: Added missing fields
+    private ShapeableImageView ivProfilePicture; 
+    private ActivityResultLauncher<PickVisualMediaRequest> pickMedia;
+    // END: Added missing fields
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        pickMedia = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
+            if (uri != null) {
+                try {
+                    InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
+                    File file = new File(requireContext().getFilesDir(), "profile_" + System.currentTimeMillis() + ".jpg");
+                    OutputStream outputStream = new FileOutputStream(file);
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = inputStream.read(buffer)) > 0) {
+                        outputStream.write(buffer, 0, length);
+                    }
+                    outputStream.close();
+                    inputStream.close();
+                    
+                    String path = file.getAbsolutePath();
+                    if (authRepository.updateProfilePicture(path)) {
+                        loadProfilePicture(path);
+                        Toast.makeText(requireContext(), "Profile picture updated", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(), "Failed to save profile picture", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(requireContext(), "Error saving image", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
 
     @Nullable
     @Override
@@ -50,6 +97,7 @@ public class SettingsFragment extends Fragment {
         
         tvUsername = view.findViewById(R.id.tvUsername);
         tvUserInitial = view.findViewById(R.id.tvUserInitial);
+        ivProfilePicture = view.findViewById(R.id.ivProfilePicture); // Init
         btnLogout = view.findViewById(R.id.btnLogout);
         btnEditProfile = view.findViewById(R.id.btnEditProfile);
         switchDarkMode = view.findViewById(R.id.switchDarkMode);
@@ -61,6 +109,12 @@ public class SettingsFragment extends Fragment {
             toggleDarkMode(isChecked);
         });
 
+        ivProfilePicture.setOnClickListener(v -> {
+            pickMedia.launch(new PickVisualMediaRequest.Builder()
+                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                    .build());
+        });
+
         User user = authRepository.getCurrentUser();
         if (user != null) {
             tvUsername.setText("@" + user.username);
@@ -70,6 +124,8 @@ public class SettingsFragment extends Fragment {
             } else {
                 tvUserInitial.setText("U");
             }
+            
+            loadProfilePicture(user.profilePicturePath); // Load picture
 
             if (!user.username.equals("Guest")) {
                 btnLogout.setVisibility(View.VISIBLE);
@@ -271,11 +327,12 @@ public class SettingsFragment extends Fragment {
     }
 
     private void showCurrencyDialog() {
+        // Show examples of 1 USD in each currency
         String[] currencies = {
-            "USD ($1,234.56)", 
-            "Khmer (5,000 ៛)", 
-            "Chinese (¥123.45)", 
-            "Vietnamese (123,456 ₫)"
+            "USD ($1.00)", 
+            "Khmer (4,100 ៛)", 
+            "Chinese (¥7.20)", 
+            "Vietnamese (25,450 ₫)"
         };
         String[] codes = {
             CurrencyHelper.CURRENCY_USD, 
@@ -342,6 +399,32 @@ public class SettingsFragment extends Fragment {
             } else {
                 tvUserInitial.setText("U");
             }
+        }
+    }
+
+    private void loadProfilePicture(String path) {
+        if (path != null && !path.isEmpty()) {
+            File imgFile = new File(path);
+            if (imgFile.exists()) {
+                try {
+                    Glide.with(this)
+                         .load(imgFile)
+                         .circleCrop()
+                         .into(ivProfilePicture);
+                    ivProfilePicture.setVisibility(View.VISIBLE);
+                    tvUserInitial.setVisibility(View.GONE);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    ivProfilePicture.setVisibility(View.GONE);
+                    tvUserInitial.setVisibility(View.VISIBLE);
+                }
+            } else {
+                 ivProfilePicture.setVisibility(View.GONE);
+                 tvUserInitial.setVisibility(View.VISIBLE);
+            }
+        } else {
+            ivProfilePicture.setVisibility(View.GONE);
+            tvUserInitial.setVisibility(View.VISIBLE);
         }
     }
 }
