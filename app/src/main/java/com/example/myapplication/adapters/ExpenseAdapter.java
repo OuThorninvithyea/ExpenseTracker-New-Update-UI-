@@ -11,6 +11,7 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.example.myapplication.utils.CurrencyHelper;
 import java.util.List;
 import java.util.Locale;
 
@@ -76,7 +77,7 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
             
             tvNote.setText(expense.note);
             
-            tvAmount.setText(String.format(Locale.getDefault(), "-$%.2f", expense.amount));
+            tvAmount.setText("-" + CurrencyHelper.formatCurrency(itemView.getContext(), expense.amount));
 
             if (expense.date != null && !expense.date.isEmpty()) {
                 tvDate.setText(expense.date);

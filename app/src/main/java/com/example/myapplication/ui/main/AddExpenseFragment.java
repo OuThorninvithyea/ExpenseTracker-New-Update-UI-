@@ -4,6 +4,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.R;
 import com.example.myapplication.services.ExpenseService;
 import com.example.myapplication.models.BudgetCheckResult;
+import com.example.myapplication.utils.CurrencyHelper;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -63,6 +64,11 @@ public class AddExpenseFragment extends Fragment {
         btnSave = view.findViewById(R.id.btnSave);
         gridCategories = view.findViewById(R.id.gridCategories);
         btnBack = view.findViewById(R.id.btnBack);
+
+        TextView tvCurrencySymbol = view.findViewById(R.id.tvCurrencySymbol);
+        if (tvCurrencySymbol != null) {
+            tvCurrencySymbol.setText(CurrencyHelper.getCurrencySymbol(requireContext()));
+        }
 
         btnBack.setOnClickListener(v -> {
             
@@ -334,16 +340,16 @@ public class AddExpenseFragment extends Fragment {
         String message = String.format(Locale.getDefault(),
             "Budget Limit Reached!\n\n" +
             "Category: %s\n" +
-            "Budget Limit: $%.2f\n" +
-            "Current Spent: $%.2f\n" +
-            "This Expense: $%.2f\n" +
-            "New Total: $%.2f\n\n" +
+            "Budget Limit: %s\n" +
+            "Current Spent: %s\n" +
+            "This Expense: %s\n" +
+            "New Total: %s\n\n" +
             "This expense will exceed your budget limit. Do you still want to proceed?",
             category,
-            budgetCheck.budgetLimit,
-            budgetCheck.currentSpent,
-            amount,
-            budgetCheck.newTotal
+            CurrencyHelper.formatCurrency(requireContext(), budgetCheck.budgetLimit),
+            CurrencyHelper.formatCurrency(requireContext(), budgetCheck.currentSpent),
+            CurrencyHelper.formatCurrency(requireContext(), amount),
+            CurrencyHelper.formatCurrency(requireContext(), budgetCheck.newTotal)
         );
 
         new AlertDialog.Builder(requireContext())

@@ -4,6 +4,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.adapters.CategoryBreakdownAdapter;
 import com.example.myapplication.services.ExpenseService;
 import com.example.myapplication.models.Expense;
+import com.example.myapplication.utils.CurrencyHelper;
 
 import android.os.Bundle;
 import android.text.Editable;
@@ -126,7 +127,7 @@ public class AnalyticsFragment extends Fragment {
             }
 
             if (tvTotalExpenses != null) {
-                tvTotalExpenses.setText(String.format(Locale.getDefault(), "$%.2f", total));
+                tvTotalExpenses.setText(CurrencyHelper.formatCurrency(requireContext(), total));
             }
             if (tvTransactionCount != null) {
                 tvTransactionCount.setText(expenses.size() + " transactions");

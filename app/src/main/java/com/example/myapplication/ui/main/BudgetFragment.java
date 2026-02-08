@@ -6,6 +6,7 @@ import com.example.myapplication.data.repositories.BudgetRepository;
 import com.example.myapplication.services.ExpenseService;
 import com.example.myapplication.models.Budget;
 import com.example.myapplication.models.Expense;
+import com.example.myapplication.utils.CurrencyHelper;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
@@ -141,6 +142,10 @@ public class BudgetFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_budget, null);
         
         TextInputEditText etAmount = dialogView.findViewById(R.id.etBudgetAmount);
+        TextView tvSymbol = dialogView.findViewById(R.id.tvBudgetCurrencySymbol);
+        if (tvSymbol != null) {
+            tvSymbol.setText(CurrencyHelper.getCurrencySymbol(requireContext()));
+        }
         TextInputEditText etCustomCategory = dialogView.findViewById(R.id.etCustomCategoryBudget);
         com.google.android.material.textfield.TextInputLayout tilCustomCategory = dialogView.findViewById(R.id.tilCustomCategoryBudget);
         GridLayout gridCategories = dialogView.findViewById(R.id.gridBudgetCategories);

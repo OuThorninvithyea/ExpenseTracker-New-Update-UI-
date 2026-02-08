@@ -9,8 +9,10 @@ import android.util.TypedValue;
 import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import com.example.myapplication.utils.CurrencyHelper;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class WeeklyOverviewChartView extends View {
     private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -130,7 +132,9 @@ public class WeeklyOverviewChartView extends View {
             RectF rect = new RectF(left, top, right, chartBottom);
             canvas.drawRoundRect(rect, radius, radius, barPaint);
 
-            String valueText = v >= 1 ? String.format("$%.0f", v) : (v > 0 ? String.format("$%.2f", v) : "");
+            String valueText = v >= 1 
+                ? CurrencyHelper.formatCurrency(getContext(), v).replace(".00", "") 
+                : (v > 0 ? CurrencyHelper.formatCurrency(getContext(), v) : "");
             if (!valueText.isEmpty()) {
                 canvas.drawText(valueText, cx, top - dp(4), valuePaint);
             }

@@ -13,6 +13,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import com.example.myapplication.utils.CurrencyHelper;
 import java.util.List;
 import java.util.Locale;
 
@@ -85,8 +86,8 @@ public class BudgetAdapter extends RecyclerView.Adapter<BudgetAdapter.BudgetView
                 tvCategory.setText(budget.category);
                 tvCategoryIcon.setText(getCategoryIcon(budget.category));
                 
-                tvSpent.setText(String.format(Locale.getDefault(), "$%.2f", spent));
-                tvLimit.setText(String.format(Locale.getDefault(), "/ $%.2f", limit));
+                tvSpent.setText(CurrencyHelper.formatCurrency(itemView.getContext(), spent));
+                tvLimit.setText("/ " + CurrencyHelper.formatCurrency(itemView.getContext(), limit));
 
                 int progress = (int) Math.min(percentage, 100);
                 progressBar.setProgress(progress);

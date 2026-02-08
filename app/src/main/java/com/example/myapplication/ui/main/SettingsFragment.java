@@ -5,6 +5,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.data.repositories.AuthRepository;
 import com.example.myapplication.services.ExpenseService;
 import com.example.myapplication.models.User;
+import com.example.myapplication.utils.CurrencyHelper;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -111,6 +112,13 @@ public class SettingsFragment extends Fragment {
         });
 
         btnEditProfile.setOnClickListener(v -> showEditProfileDialog());
+        
+        View layoutCurrency = view.findViewById(R.id.layoutCurrency);
+        if (layoutCurrency != null) {
+            layoutCurrency.setOnClickListener(v -> showCurrencyDialog());
+        }
+        
+        updateCurrencyDisplay();
     }
 
     private void loadDarkModeState() {
@@ -262,11 +270,69 @@ public class SettingsFragment extends Fragment {
         return 0xFF000000;
     }
 
+    private void showCurrencyDialog() {
+        String[] currencies = {
+            "USD ($1,234.56)", 
+            "Khmer (5,000 ៛)", 
+            "Chinese (¥123.45)", 
+            "Vietnamese (123,456 ₫)"
+        };
+        String[] codes = {
+            CurrencyHelper.CURRENCY_USD, 
+            CurrencyHelper.CURRENCY_KHR, 
+            CurrencyHelper.CURRENCY_CNY, 
+            CurrencyHelper.CURRENCY_VND
+        };
+        
+        String currentCode = CurrencyHelper.getCurrencyCode(requireContext());
+        int checkedItem = 0;
+        for (int i = 0; i < codes.length; i++) {
+            if (codes[i].equals(currentCode)) {
+                checkedItem = i;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(requireContext())
+            .setTitle("Select Currency")
+            .setSingleChoiceItems(currencies, checkedItem, (dialog, which) -> {
+                CurrencyHelper.setCurrencyCode(requireContext(), codes[which]);
+                updateCurrencyDisplay();
+                dialog.dismiss();
+                
+                // Refresh main activity to update all fragments
+                if (getActivity() != null) {
+                    getActivity().recreate();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void updateCurrencyDisplay() {
+        TextView tvCurrentCurrency = getView().findViewById(R.id.tvCurrentCurrency);
+        if (tvCurrentCurrency != null) {
+            String code = CurrencyHelper.getCurrencyCode(requireContext());
+            String symbol = CurrencyHelper.getCurrencySymbol(requireContext());
+            
+            String displayText;
+            switch (code) {
+                case CurrencyHelper.CURRENCY_KHR: displayText = "Khmer (" + symbol + ")"; break;
+                case CurrencyHelper.CURRENCY_CNY: displayText = "Chinese (" + symbol + ")"; break;
+                case CurrencyHelper.CURRENCY_VND: displayText = "Vietnamese (" + symbol + ")"; break;
+                case CurrencyHelper.CURRENCY_USD: 
+                default: displayText = "USD (" + symbol + ")"; break;
+            }
+            tvCurrentCurrency.setText(displayText);
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         
         loadDarkModeState();
+        updateCurrencyDisplay();
 
         User user = authRepository.getCurrentUser();
         if (user != null) {

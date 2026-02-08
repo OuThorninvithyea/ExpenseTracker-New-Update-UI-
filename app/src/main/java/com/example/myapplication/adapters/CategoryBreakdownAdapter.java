@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.example.myapplication.utils.CurrencyHelper;
 import java.util.List;
 import java.util.Locale;
 
@@ -62,7 +63,7 @@ public class CategoryBreakdownAdapter extends RecyclerView.Adapter<CategoryBreak
             
             tvCategoryName.setText(breakdown.category);
             
-            tvCategoryAmount.setText(String.format(Locale.getDefault(), "$%.2f", breakdown.amount));
+            tvCategoryAmount.setText(CurrencyHelper.formatCurrency(itemView.getContext(), breakdown.amount));
             
             tvCategoryPercentage.setText(String.format(Locale.getDefault(), "%.1f%%", breakdown.percentage));
 

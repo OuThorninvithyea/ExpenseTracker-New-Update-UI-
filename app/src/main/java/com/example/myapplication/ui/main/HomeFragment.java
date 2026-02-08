@@ -5,6 +5,7 @@ import com.example.myapplication.adapters.ExpenseAdapter;
 import com.example.myapplication.services.ExpenseService;
 import com.example.myapplication.models.BudgetCheckResult;
 import com.example.myapplication.models.Expense;
+import com.example.myapplication.utils.CurrencyHelper;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -189,7 +190,7 @@ public class HomeFragment extends Fragment {
             }
             
             if (tvTotalAmount != null) {
-                tvTotalAmount.setText(String.format(Locale.getDefault(), "$%.2f", total));
+                tvTotalAmount.setText(CurrencyHelper.formatCurrency(requireContext(), total));
             }
         } catch (Exception e) {
             android.util.Log.e("HomeFragment", "Error loading expenses", e);
@@ -479,16 +480,16 @@ public class HomeFragment extends Fragment {
         String message = String.format(Locale.getDefault(),
             "Budget Limit Reached!\n\n" +
             "Category: %s\n" +
-            "Budget Limit: $%.2f\n" +
-            "Current Spent: $%.2f\n" +
-            "This Expense: $%.2f\n" +
-            "New Total: $%.2f\n\n" +
+            "Budget Limit: %s\n" +
+            "Current Spent: %s\n" +
+            "This Expense: %s\n" +
+            "New Total: %s\n\n" +
             "This expense will exceed your budget limit. Do you still want to proceed?",
             category,
-            budgetCheck.budgetLimit,
-            budgetCheck.currentSpent,
-            amount,
-            budgetCheck.newTotal
+            CurrencyHelper.formatCurrency(requireContext(), budgetCheck.budgetLimit),
+            CurrencyHelper.formatCurrency(requireContext(), budgetCheck.currentSpent),
+            CurrencyHelper.formatCurrency(requireContext(), amount),
+            CurrencyHelper.formatCurrency(requireContext(), budgetCheck.newTotal)
         );
 
         new AlertDialog.Builder(requireContext())
